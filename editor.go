@@ -1,35 +1,55 @@
 package main
 
 import (
+	"github.com/mattn/go-runewidth"
 	"github.com/nsf/termbox-go"
 )
 
 type cursor struct {
-	x int
-	y int
+	line  int // line number; starting from 1
+	chPos int // char offset in the line
+	viPos int // visual offset in the line
 }
 
-var cs *cursor
+type line []rune
+
+var (
+	cs   *cursor
+	text []line
+)
 
 const defCol = termbox.ColorDefault
 
-func InsertRune(ch rune) {
-	termbox.SetCell(cs.x, cs.y, ch, defCol, defCol)
-	cs.x++
+func insertChar(ch rune) {
+	text[cs.line] = append(text[cs.line], 0)
+	copy(text[cs.line][cs.chPos+1:], text[cs.line][cs.chPos:])
+	text[cs.line][cs.chPos] = ch
+	cs.chPos++
+	cs.viPos += runewidth.RuneWidth(ch)
 }
 
-func DeleteRuneBackward() {
-	termbox.SetCell(cs.x-1, cs.y, ' ', defCol, defCol)
-	cs.x--
+func deleteChBackward() {
+	if cs.chPos == 0 {
+		return
+	}
+	cs.chPos -= 1
+	cs.viPos -= runewidth.RuneWidth(text[cs.line][cs.chPos])
+	text[cs.line] = append(text[cs.line][:cs.chPos], text[cs.line][cs.chPos+1:]...)
 }
 
 func DeleteRuneForward() {
-	termbox.SetCell(cs.x, cs.y, ' ', defCol, defCol)
-	cs.x--
 }
 
 func draw() {
-	termbox.SetCursor(cs.x, cs.y)
+	termbox.Clear(defCol, defCol)
+	for i, line := range text {
+		pos := 0
+		for _, ch := range line {
+			termbox.SetCell(pos, i, ch, defCol, defCol)
+			pos += runewidth.RuneWidth(ch)
+		}
+	}
+	termbox.SetCursor(cs.viPos, cs.line)
 	termbox.Flush()
 }
 
@@ -41,7 +61,9 @@ func main() {
 	defer termbox.Close()
 	termbox.SetInputMode(termbox.InputEsc)
 
-	cs = &cursor{0, 0}
+	text = make([]line, 1, 20)
+	text[0] = make([]rune, 0, 100)
+	cs = &cursor{0, 0, 0}
 	draw()
 
 mainloop:
@@ -52,14 +74,14 @@ mainloop:
 			case termbox.KeyEsc:
 				break mainloop
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
-				DeleteRuneBackward()
+				deleteChBackward()
 			case termbox.KeyTab:
-				InsertRune('\t')
+				insertChar('\t')
 			case termbox.KeySpace:
-				InsertRune(' ')
+				insertChar(' ')
 			default:
 				if ev.Ch != 0 {
-					InsertRune(ev.Ch)
+					insertChar(ev.Ch)
 				}
 			}
 		case termbox.EventError:
