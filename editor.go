@@ -3,30 +3,17 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-
-	"github.com/mattn/go-runewidth"
-	"github.com/nsf/termbox-go"
 )
 
 type cursor struct {
 	line  int // line number; starting from 1
 	chPos int // char offset in the line
-	viPos int // visual offset in the line
 }
 
 type line []rune
-type direction int
-
-const (
-	up direction = iota
-	down
-	left
-	rigth
-)
-
-const defCol = termbox.ColorDefault
 
 var (
+	ui   frontend
 	cs   *cursor
 	text []line
 )
@@ -36,14 +23,12 @@ func insertChar(ch rune) {
 	copy(text[cs.line][cs.chPos+1:], text[cs.line][cs.chPos:])
 	text[cs.line][cs.chPos] = ch
 	cs.chPos++
-	cs.viPos += runewidth.RuneWidth(ch)
 }
 
 func insertNewLineChar() {
 	insertChar('\n')
 	addNewLine(cs.line + 1)
 	cs.chPos = 0
-	cs.viPos = 0
 	cs.line += 1
 }
 
@@ -81,14 +66,6 @@ func addNewLine(line int) {
 	*cs = oldCs
 }
 
-func newViPos() int {
-	v := 0
-	for _, c := range text[cs.line] {
-		v += runewidth.RuneWidth(c)
-	}
-	return v
-}
-
 func deleteChBackward() {
 	if cs.chPos == 0 {
 		if cs.line == 0 {
@@ -101,11 +78,9 @@ func deleteChBackward() {
 			}
 			text[cs.line] = text[cs.line][:len(text[cs.line])-1]
 			cs.chPos = len(text[cs.line])
-			cs.viPos = newViPos()
 		}
 	} else {
 		cs.chPos -= 1
-		cs.viPos -= runewidth.RuneWidth(text[cs.line][cs.chPos])
 		text[cs.line] = append(text[cs.line][:cs.chPos], text[cs.line][cs.chPos+1:]...)
 	}
 }
@@ -117,53 +92,38 @@ func deleteLine(line int) {
 func DeleteRuneForward() {
 }
 
-func draw() {
-	termbox.Clear(defCol, defCol)
-	for i, line := range text {
-		pos := 0
-		for _, ch := range line {
-			termbox.SetCell(pos, i, ch, defCol, defCol)
-			pos += runewidth.RuneWidth(ch)
-		}
-	}
-	termbox.SetCursor(cs.viPos, cs.line)
-	termbox.Flush()
-}
-
 func main() {
-	err := termbox.Init()
-	if err != nil {
-		panic(err)
-	}
-	defer termbox.Close()
-	termbox.SetInputMode(termbox.InputEsc)
-
+	var err error
+	ui, err = newFrontend("terminal")
+	check(err)
+	check(ui.Init())
+	defer ui.Close()
 	text = make([]line, 1, 20)
 	text[0] = newLine()
-	cs = &cursor{0, 0, 0}
+	cs = &cursor{0, 0}
 	draw()
 
 mainloop:
 	for {
-		switch ev := termbox.PollEvent(); ev.Type {
-		case termbox.EventKey:
+		switch ev := ui.PollEvent(); ev.Type {
+		case uiEventKey:
 			switch ev.Key {
-			case termbox.KeyEsc:
+			case KeyEsc:
 				break mainloop
-			case termbox.KeyBackspace, termbox.KeyBackspace2:
+			case KeyBackspace, KeyBackspace2:
 				deleteChBackward()
-			case termbox.KeyTab:
+			case KeyTab:
 				insertChar('\t')
-			case termbox.KeySpace:
+			case KeySpace:
 				insertChar(' ')
-			case termbox.KeyEnter, termbox.KeyCtrlJ:
+			case KeyEnter, KeyCtrlJ:
 				insertNewLineChar()
 			default:
 				if ev.Ch != 0 {
 					insertChar(ev.Ch)
 				}
 			}
-		case termbox.EventError:
+		case uiEventError:
 			panic(ev.Err)
 		}
 		draw()
