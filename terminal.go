@@ -39,11 +39,11 @@ func (t *terminal) HideCursor() {
 	termbox.HideCursor()
 }
 
-func (t *terminal) PollEvent() uiEvent {
+func (t *terminal) PollEvent() UiEvent {
 	ev := termbox.PollEvent()
-	return uiEvent{
-		uiEventType(ev.Type),
-		uiModifier(ev.Mod),
+	return UiEvent{
+		UiEventType(ev.Type),
+		UiModifier(ev.Mod),
 		Key(ev.Key),
 		ev.Ch,
 		ev.Width,

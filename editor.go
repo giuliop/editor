@@ -13,7 +13,7 @@ type cursor struct {
 type line []rune
 
 var (
-	ui   frontend
+	ui   Ui
 	cs   *cursor
 	text []line
 )
@@ -94,7 +94,7 @@ func DeleteRuneForward() {
 
 func main() {
 	var err error
-	ui, err = newFrontend("terminal")
+	ui, err = selectUI("terminal")
 	check(err)
 	check(ui.Init())
 	defer ui.Close()
@@ -106,7 +106,7 @@ func main() {
 mainloop:
 	for {
 		switch ev := ui.PollEvent(); ev.Type {
-		case uiEventKey:
+		case UiEventKey:
 			switch ev.Key {
 			case KeyEsc:
 				break mainloop
@@ -123,7 +123,7 @@ mainloop:
 					insertChar(ev.Ch)
 				}
 			}
-		case uiEventError:
+		case UiEventError:
 			panic(ev.Err)
 		}
 		draw()
