@@ -1,6 +1,20 @@
 package main
 
-import "fmt"
+import "time"
+
+type internal struct {
+	bufs []buffer // the open buffers
+	cb   *buffer  // the current buffer
+}
+
+type buffer struct {
+	text     []line
+	cs       cursor
+	name     string
+	filename string
+	fileSync time.Time
+	modified bool
+}
 
 type cursor struct {
 	line  int // line number; starting from 1
@@ -9,64 +23,90 @@ type cursor struct {
 
 type line []rune
 
-func insertChar(ch rune) {
-	text[cs.line] = append(text[cs.line], 0)
-	copy(text[cs.line][cs.chPos+1:], text[cs.line][cs.chPos:])
-	text[cs.line][cs.chPos] = ch
-	cs.chPos++
+func initInternal() internal {
+	in := internal{}
+	in.cb = in.newBuffer("")
+	return in
 }
 
-func insertNewLineChar() {
-	insertChar('\n')
-	addNewLine(cs.line + 1)
-	cs.chPos = 0
-	cs.line += 1
+// newBuffer adds a new empty buffer to internal and returns a pointer to it
+func (i *internal) newBuffer(name string) *buffer {
+	b := buffer{
+		text: make([]line, 1, 20),
+		cs:   cursor{0, 0},
+		name: name,
+	}
+	b.text[0] = newLine()
+	in.bufs = append(in.bufs, b)
+	return &b
+}
+
+func (b *buffer) insertChar(ch rune) {
+	line := b.cs.line
+	pos := b.cs.chPos
+	b.text[line] = append(b.text[line], 0)
+	copy(b.text[line][pos+1:], b.text[line][pos:])
+	b.text[line][pos] = ch
+	b.cs.chPos++
+}
+
+func (b *buffer) insertNewLineChar() {
+	b.insertChar('\n')
+	b.addNewLine(b.cs.line + 1)
+	b.cs.chPos = 0
+	b.cs.line += 1
 }
 
 func newLine() line {
 	return make([]rune, 0, 100)
 }
 
-func addNewLine(line int) {
-	oldCs := *cs
-	if line > 0 && text[line-1][len(text[line-1])-1] != '\n' {
-		cs.line = line - 1
-		cs.chPos = len(text[line-1])
-		insertChar('\n')
+func (b *buffer) addNewLine(line int) {
+	oldCs := b.cs
+	if line > 0 && b.text[line-1][len(b.text[line-1])-1] != '\n' {
+		b.cs.line = line - 1
+		b.cs.chPos = len(b.text[line-1])
+		b.insertChar('\n')
 	}
 	// if line to be added at the end
 	if line == oldCs.line+1 {
-		text = append(text, newLine())
+		b.text = append(b.text, newLine())
 	} else {
-		text = append(text, nil)
-		copy(text[line+1:], text[line:])
-		text[line] = newLine()
+		b.text = append(b.text, nil)
+		copy(b.text[line+1:], b.text[line:])
+		b.text[line] = newLine()
 	}
-	*cs = oldCs
+	b.cs = oldCs
 }
 
-func deleteChBackward() {
-	if cs.chPos == 0 {
-		if cs.line == 0 {
+func (b *buffer) deleteChBackward() {
+	line := b.cs.line
+	pos := b.cs.chPos
+	// if empty line delete it (unless first line in buffer)
+	if pos == 0 {
+		if line == 0 {
 			return
-		} else {
-			cs.line -= 1
-			deleteLine(cs.line + 1)
-			if text[cs.line][len(text[cs.line])-1] != '\n' {
-				debug(true, fmt.Sprintf("Last char of line %v is %v, was expecting \\n", cs.line, text[cs.line]))
-			}
-			text[cs.line] = text[cs.line][:len(text[cs.line])-1]
-			cs.chPos = len(text[cs.line])
 		}
+		b.deleteLine(line)
+		// if last line delete newline char
+		line -= 1
+		if line == len(b.text)-1 {
+			b.text[line] = b.text[line][:len(b.text[line])-1]
+		}
+		// reposition cursor
+		b.cs.line -= 1
+		b.cs.chPos = len(b.text[line])
 	} else {
-		cs.chPos -= 1
-		text[cs.line] = append(text[cs.line][:cs.chPos], text[cs.line][cs.chPos+1:]...)
+		pos -= 1
+		b.text[line] = append(b.text[line][:pos], b.text[line][pos+1:]...)
+		// reposition cursor
+		b.cs.chPos = pos
 	}
 }
 
-func deleteLine(line int) {
-	text = append(text[:line], text[line+1:]...)
+func (b *buffer) deleteLine(line int) {
+	b.text = append(b.text[:line], b.text[line+1:]...)
 }
 
-func DeleteRuneForward() {
+func (b *buffer) DeleteChForward() {
 }
