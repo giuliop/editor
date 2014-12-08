@@ -10,12 +10,14 @@ var (
 	text []line
 )
 
+// check panics if passed an error
 func check(e error) {
 	if e != nil {
 		panic(e)
 	}
 }
 
+// debug writes msg to a file called debug and optionally panics based on the value of stop
 func debug(stop bool, msg string) {
 	err := ioutil.WriteFile("debug", []byte(msg), 0644)
 	check(err)
@@ -25,23 +27,26 @@ func debug(stop bool, msg string) {
 }
 
 func main() {
+	// initialize internal editor
+	text = make([]line, 1, 20)
+	text[0] = newLine()
+	cs = &cursor{0, 0}
+
+	// initialize ui frontend
 	var err error
 	ui, err = selectUI("terminal")
 	check(err)
 	check(ui.Init())
 	defer ui.Close()
-	text = make([]line, 1, 20)
-	text[0] = newLine()
-	cs = &cursor{0, 0}
 	draw()
 
-mainloop:
+eventLoop:
 	for {
 		switch ev := ui.PollEvent(); ev.Type {
 		case UiEventKey:
 			switch ev.Key {
 			case KeyEsc:
-				break mainloop
+				break eventLoop
 			case KeyBackspace, KeyBackspace2:
 				deleteChBackward()
 			case KeyTab:
