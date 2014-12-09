@@ -6,7 +6,7 @@ import (
 
 var (
 	ui UI
-	in internal
+	in internalEditor
 )
 
 // check panics if passed an error
@@ -36,7 +36,7 @@ func main() {
 	check(err)
 	check(ui.Init())
 	defer ui.Close()
-	draw()
+	ui.Draw()
 
 eventLoop:
 	for {
@@ -46,21 +46,21 @@ eventLoop:
 			case KeyEsc:
 				break eventLoop
 			case KeyBackspace, KeyBackspace2:
-				in.cb.deleteChBackward()
+				in.deleteChBackward()
 			case KeyTab:
-				in.cb.insertChar('\t')
+				in.insertCh('\t')
 			case KeySpace:
-				in.cb.insertChar(' ')
+				in.insertCh(' ')
 			case KeyEnter, KeyCtrlJ:
-				in.cb.insertNewLineChar()
+				in.insertNewLineCh()
 			default:
 				if ev.Ch != 0 {
-					in.cb.insertChar(ev.Ch)
+					in.insertCh(ev.Ch)
 				}
 			}
 		case UIEventError:
 			panic(ev.Err)
 		}
-		draw()
+		ui.Draw()
 	}
 }

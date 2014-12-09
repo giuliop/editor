@@ -6,11 +6,12 @@ import "fmt"
 type UI interface {
 	Init() error
 	Close()
-	Clear() error
-	Flush() error
-	SetCursor(x, y int)
-	HideCursor()
-	SetCell(x, y int, ch rune)
+	Draw()
+	//Clear() error
+	//Flush() error
+	//SetCursor(x, y int)
+	//HideCursor()
+	//SetCell(x, y int, ch rune)
 	PollEvent() UIEvent
 }
 
