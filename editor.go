@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ui Ui
+	ui UI
 	in internal
 )
 
@@ -41,7 +41,7 @@ func main() {
 eventLoop:
 	for {
 		switch ev := ui.PollEvent(); ev.Type {
-		case UiEventKey:
+		case UIEventKey:
 			switch ev.Key {
 			case KeyEsc:
 				break eventLoop
@@ -58,7 +58,7 @@ eventLoop:
 					in.cb.insertChar(ev.Ch)
 				}
 			}
-		case UiEventError:
+		case UIEventError:
 			panic(ev.Err)
 		}
 		draw()

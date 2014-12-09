@@ -2,8 +2,8 @@ package main
 
 import "fmt"
 
-// frontend is the controller for a terminal or gui application
-type Ui interface {
+// UI is the controller for a terminal or gui frontend
+type UI interface {
 	Init() error
 	Close()
 	Clear() error
@@ -11,10 +11,10 @@ type Ui interface {
 	SetCursor(x, y int)
 	HideCursor()
 	SetCell(x, y int, ch rune)
-	PollEvent() UiEvent
+	PollEvent() UIEvent
 }
 
-func selectUI(name string) (Ui, error) {
+func selectUI(name string) (UI, error) {
 	switch name {
 	case "terminal":
 		return &terminal{"term"}, nil
@@ -22,9 +22,9 @@ func selectUI(name string) (Ui, error) {
 	return nil, fmt.Errorf("Unknown frontend")
 }
 
-type UiEvent struct {
-	Type   UiEventType // one of Event* constants
-	Mod    UiModifier  // one of Mod* constants or 0
+type UIEvent struct {
+	Type   UIEventType // one of Event* constants
+	Mod    UIModifier  // one of Mod* constants or 0
 	Key    Key         // one of Key* constants, invalid if 'Ch' is not 0
 	Ch     rune        // a unicode character
 	Width  int         // width of the screen
@@ -34,19 +34,19 @@ type UiEvent struct {
 	MouseY int         // y coord of mouse
 }
 
-type UiEventType uint8
+type UIEventType uint8
 
 const (
-	UiEventKey UiEventType = iota
-	UiEventResize
-	UiEventMouse
-	UiEventError
+	UIEventKey UIEventType = iota
+	UIEventResize
+	UIEventMouse
+	UIEventError
 )
 
-type UiModifier uint8
+type UIModifier uint8
 
 const (
-	ModAlt UiModifier = 0x01
+	ModAlt UIModifier = 0x01
 )
 
 type Key uint16
