@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// interalEditor specifies the api of the internal representation of buffers
-type internalEditor interface {
+// interalEditor specifies the api of the engine representation of buffers
+type textEngine interface {
 	init()
 	newBuffer(name string) *buffer
 	//openFile()
@@ -33,13 +33,13 @@ type internalEditor interface {
 	cursorLine() int
 }
 
-// internalModel is the internal representation of internal editor
-type internal struct {
+// engineModel is the engine representation of engine editor
+type engine struct {
 	bufs []buffer // the open buffers
 	cb   *buffer  // the current buffer
 }
 
-// buffer is the internal representation of a buffer
+// buffer is the engine representation of a buffer
 type buffer struct {
 	text     []line
 	cs       mark
@@ -53,66 +53,66 @@ type buffer struct {
 // line represent a line in a buffer
 type line []rune
 
-// initInternal returns the internal editor after having initialized it (for now with one empty buffer)
-func initInternal() internalEditor {
-	in := &internal{}
-	in.init()
-	return in
+// initengine returns the engine editor after having initialized it (for now with one empty buffer)
+func initEngine() textEngine {
+	eng := &engine{}
+	eng.init()
+	return eng
 }
 
-// init initializes the internal editor (for now with one empty buffer)
-func (in *internal) init() {
-	in.cb = in.newBuffer("")
+// init initializes the engine editor (for now with one empty buffer)
+func (eng *engine) init() {
+	eng.cb = eng.newBuffer("")
 }
 
-// newBuffer adds a new empty buffer to internal and returns a pointer to it
-func (i *internal) newBuffer(name string) *buffer {
+// newBuffer adds a new empty buffer to engine and returns a pointer to it
+func (eng *engine) newBuffer(name string) *buffer {
 	b := &buffer{
 		text: make([]line, 1, 20),
 		name: name,
 	}
 	b.cs = newMark(b)
 	b.text[0] = newLine()
-	i.bufs = append(i.bufs, *b)
+	eng.bufs = append(eng.bufs, *b)
 	return b
 }
 
-func (in *internal) text() []line {
-	return in.cb.text
+func (eng *engine) text() []line {
+	return eng.cb.text
 }
 
-func (in *internal) cursorLine() int {
-	return in.cb.cs.line
+func (eng *engine) cursorLine() int {
+	return eng.cb.cs.line
 }
 
-func (in *internal) statusLine() []interface{} {
-	cs := in.cb.cs
-	return []interface{}{cs.pos + 1, fmt.Sprintf("%q", in.cb.text[cs.line]),
+func (eng *engine) statusLine() []interface{} {
+	cs := eng.cb.cs
+	return []interface{}{cs.pos + 1, fmt.Sprintf("%q", eng.cb.text[cs.line]),
 		cs.lastChPos() + 1, cs.maxLine() + 1}
 }
 
-func (in *internal) moveCursorUp(steps int) {
-	in.cb.cs.moveUp(steps)
+func (eng *engine) moveCursorUp(steps int) {
+	eng.cb.cs.moveUp(steps)
 }
 
-func (in *internal) moveCursorDown(steps int) {
-	in.cb.cs.moveDown(steps)
+func (eng *engine) moveCursorDown(steps int) {
+	eng.cb.cs.moveDown(steps)
 }
 
-func (in *internal) moveCursorRight(steps int) {
-	in.cb.cs.moveRight(steps)
+func (eng *engine) moveCursorRight(steps int) {
+	eng.cb.cs.moveRight(steps)
 }
 
-func (in *internal) moveCursorLeft(steps int) {
-	in.cb.cs.moveLeft(steps)
+func (eng *engine) moveCursorLeft(steps int) {
+	eng.cb.cs.moveLeft(steps)
 }
 
-func (in *internal) setCursor(line, pos int) {
-	in.cb.cs.set(line, pos)
+func (eng *engine) setCursor(line, pos int) {
+	eng.cb.cs.set(line, pos)
 }
 
-func (in *internal) insertCh(ch rune) {
-	b := in.cb
+func (eng *engine) insertCh(ch rune) {
+	b := eng.cb
 	cs := b.cs
 	b.text[cs.line] = append(b.text[cs.line], 0)
 	copy(b.text[cs.line][cs.pos+1:], b.text[cs.line][cs.pos:])
@@ -120,21 +120,21 @@ func (in *internal) insertCh(ch rune) {
 	b.cs.pos++
 }
 
-func (in *internal) insertNewLineCh() {
-	cs := in.cb.cs
-	in.insertLineBelow()
-	copy(in.cb.text[cs.line+1], in.cb.text[cs.line][cs.pos:])
-	in.cb.text[cs.line] = append(in.cb.text[cs.line][:cs.pos], '\n')
-	in.cb.cs.pos = 0
-	in.cb.cs.line += 1
+func (eng *engine) insertNewLineCh() {
+	cs := eng.cb.cs
+	eng.insertLineBelow()
+	copy(eng.cb.text[cs.line+1], eng.cb.text[cs.line][cs.pos:])
+	eng.cb.text[cs.line] = append(eng.cb.text[cs.line][:cs.pos], '\n')
+	eng.cb.cs.pos = 0
+	eng.cb.cs.line += 1
 }
 
 func newLine() line {
 	return make([]rune, 0, 100)
 }
 
-func (in *internal) insertLineBelow() {
-	b := in.cb
+func (eng *engine) insertLineBelow() {
+	b := eng.cb
 	cs := b.cs
 	if cs.atLastLine() {
 		b.text = append(b.text, newLine())
@@ -146,15 +146,15 @@ func (in *internal) insertLineBelow() {
 	b.cs = cs
 }
 
-func (in *internal) deleteChBackward() {
-	b := in.cb
+func (eng *engine) deleteChBackward() {
+	b := eng.cb
 	cs := b.cs
 	// if empty line delete it (unless first line in buffer)
 	if cs.atLineStart() {
 		if cs.atFirstLine() {
 			return
 		}
-		in.deleteLine()
+		eng.deleteLine()
 		cs.line -= 1
 		// if last line delete newline char
 		if cs.atLastLine() {
@@ -169,10 +169,10 @@ func (in *internal) deleteChBackward() {
 	b.cs = cs
 }
 
-func (in *internal) deleteLine() {
-	b := in.cb
+func (eng *engine) deleteLine() {
+	b := eng.cb
 	b.text = append(b.text[:b.cs.line], b.text[b.cs.line+1:]...)
 }
 
-func (in *internal) DeleteChForward() {
+func (eng *engine) DeleteChForward() {
 }

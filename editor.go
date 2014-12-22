@@ -5,8 +5,8 @@ import (
 )
 
 var (
-	ui UI
-	in internalEditor
+	ui  UI
+	eng textEngine
 )
 
 // check panics if passed an error
@@ -28,7 +28,7 @@ func debug(stop bool, msg string) {
 func main() {
 	// initialize internal editor
 	// for now we create one empty buffer
-	in = initInternal()
+	eng = initEngine()
 
 	// initialize ui frontend
 	var err error
@@ -46,16 +46,16 @@ eventLoop:
 			case KeyEsc:
 				break eventLoop
 			case KeyBackspace, KeyBackspace2:
-				in.deleteChBackward()
+				eng.deleteChBackward()
 			case KeyTab:
-				in.insertCh('\t')
+				eng.insertCh('\t')
 			case KeySpace:
-				in.insertCh(' ')
+				eng.insertCh(' ')
 			case KeyEnter, KeyCtrlJ:
-				in.insertNewLineCh()
+				eng.insertNewLineCh()
 			default:
 				if ev.Ch != 0 {
-					in.insertCh(ev.Ch)
+					eng.insertCh(ev.Ch)
 				}
 			}
 		case UIEventError:
