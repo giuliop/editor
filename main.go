@@ -61,7 +61,9 @@ func main() {
 					cmd = insertChar
 					ctx.char = ev.Char
 				}
-				cmd(ctx)
+				if cmd != nil {
+					cmd(ctx)
+				}
 			case UIEventError:
 				panic(ev.Err)
 			}
