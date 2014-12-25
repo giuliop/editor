@@ -22,7 +22,7 @@ func (m *mark) atLineStart() bool {
 	return m.pos == 0
 }
 
-func (m *mark) lastChPos() int {
+func (m *mark) lastCharPos() int {
 	return len(m.buf.text[m.line]) - 1
 }
 
@@ -31,8 +31,8 @@ func (m *mark) maxLine() int {
 }
 
 func (m *mark) checkPos() {
-	if m.pos > m.lastChPos() {
-		m.pos = m.lastChPos()
+	if m.pos > m.lastCharPos() {
+		m.pos = m.lastCharPos()
 	}
 }
 
@@ -53,7 +53,7 @@ func (m *mark) moveDown(steps int) {
 }
 
 func (m *mark) moveRight(steps int) {
-	if !(m.pos > m.lastChPos()) {
+	if !(m.pos > m.lastCharPos()) {
 		m.pos += 1
 	} else {
 		if !m.atLastLine() {

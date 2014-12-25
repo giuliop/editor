@@ -4,7 +4,7 @@ import "fmt"
 
 // UI is the controller for a terminal or gui frontend
 type UI interface {
-	Init() error
+	Init(b *buffer) error
 	Close()
 	Draw()
 	//Clear() error
@@ -13,12 +13,13 @@ type UI interface {
 	//HideCursor()
 	//SetCell(x, y int, ch rune)
 	PollEvent() UIEvent
+	CurrentBuffer() *buffer
 }
 
 func selectUI(name string) (UI, error) {
 	switch name {
 	case "terminal":
-		return &terminal{"term"}, nil
+		return &terminal{"term", nil}, nil
 	}
 	return nil, fmt.Errorf("Unknown frontend")
 }
@@ -27,7 +28,7 @@ type UIEvent struct {
 	Type   UIEventType // one of Event* constants
 	Mod    UIModifier  // one of Mod* constants or 0
 	Key    Key         // one of Key* constants, invalid if 'Ch' is not 0
-	Ch     rune        // a unicode character
+	Char   rune        // a unicode character
 	Width  int         // width of the screen
 	Height int         // height of the screen
 	Err    error       // error in case if input failed

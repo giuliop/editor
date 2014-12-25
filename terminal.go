@@ -9,10 +9,12 @@ import (
 const defCol = termbox.ColorDefault
 
 type terminal struct {
-	name string
+	name   string
+	curBuf *buffer
 }
 
-func (t *terminal) Init() error {
+func (t *terminal) Init(b *buffer) error {
+	t.curBuf = b
 	return termbox.Init()
 }
 
@@ -27,7 +29,7 @@ func (t *terminal) Draw() {
 	// viPos tracks the visual position of chars in the line since some chars
 	// might take two spaces on screen
 	var viPos int
-	for i, line := range eng.text() {
+	for i, line := range eng.text(t.CurrentBuffer()) {
 		viPos = 0
 		for _, ch := range line {
 			t.setCell(viPos, i, ch)
@@ -36,7 +38,7 @@ func (t *terminal) Draw() {
 	}
 	if debug {
 		offset := 80
-		for l, line := range eng.text() {
+		for l, line := range eng.text(t.CurrentBuffer()) {
 			s := fmt.Sprintf("%q", line)
 			for c, ch := range s {
 				t.setCell(c+offset, l, ch)
@@ -44,7 +46,7 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
-	t.setCursor(viPos, eng.cursorLine())
+	t.setCursor(viPos, eng.cursorLine(t.CurrentBuffer()))
 	t.flush()
 }
 
@@ -52,9 +54,9 @@ func (t *terminal) statusLine() {
 	termw, termh := termbox.Size()
 	termw += 0
 	line := termh - 2
-	args := eng.statusLine()
+	args := eng.statusLine(t.CurrentBuffer())
 	s := fmt.Sprintf("Line %v, char %v, raw line %v, total chars %v, total lines %v",
-		eng.cursorLine()+1, args[0], args[1], args[2], args[3])
+		eng.cursorLine(t.CurrentBuffer())+1, args[0], args[1], args[2], args[3])
 	for i, ch := range s {
 		t.setCell(i, line, ch)
 	}
@@ -93,4 +95,7 @@ func (t *terminal) PollEvent() UIEvent {
 		ev.MouseX,
 		ev.MouseY,
 	}
+}
+func (t *terminal) CurrentBuffer() *buffer {
+	return t.curBuf
 }
