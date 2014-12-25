@@ -15,12 +15,10 @@ type cmdContext struct {
 	object string
 	char   rune
 	dir    direction
-	point  mark
+	point  *mark
 }
 
-type cmdFunc func()
-
-var ctx = new(cmdContext)
+type cmdFunc func(ctx *cmdContext)
 
 var cmdNames = map[string]cmdFunc{}
 var cmdKeys = map[Key]cmdFunc{
@@ -33,36 +31,31 @@ var cmdKeys = map[Key]cmdFunc{
 	KeyCtrlJ:      insertNewLine,
 }
 
-func exitProgram() {
+func exitProgram(ctx *cmdContext) {
 	exitSignal <- true
 }
 
-func deleteCharBackward() {
-	b := ui.CurrentBuffer()
-	b.cs = eng.deleteCharBackward(b.cs)
+func deleteCharBackward(ctx *cmdContext) {
+	*ctx.point = eng.deleteCharBackward(*ctx.point)
 }
 
-func insertTab() {
-	b := ui.CurrentBuffer()
-	eng.insertChar(b.cs, '\t')
-	b.cs.pos++
+func insertTab(ctx *cmdContext) {
+	eng.insertChar(*ctx.point, '\t')
+	ctx.point.pos++
 }
 
-func insertSpace() {
-	b := ui.CurrentBuffer()
-	eng.insertChar(b.cs, ' ')
-	b.cs.pos++
+func insertSpace(ctx *cmdContext) {
+	eng.insertChar(*ctx.point, ' ')
+	ctx.point.pos++
 }
 
-func insertNewLine() {
-	b := ui.CurrentBuffer()
-	eng.insertNewLineChar(b.cs)
-	b.cs.pos = 0
-	b.cs.line += 1
+func insertNewLine(ctx *cmdContext) {
+	eng.insertNewLineChar(*ctx.point)
+	ctx.point.pos = 0
+	ctx.point.line += 1
 }
 
-func insertChar(ch rune) {
-	b := ui.CurrentBuffer()
-	eng.insertChar(b.cs, ch)
-	b.cs.pos++
+func insertChar(ctx *cmdContext) {
+	eng.insertChar(*ctx.point, ctx.char)
+	ctx.point.pos++
 }

@@ -1,15 +1,10 @@
 package main
 
-import (
-	"fmt"
-	"os"
-)
+import "os"
 
 var (
-	ui         UI                // the user interface
 	eng        textEngine        // the buffer collection backend
 	exitSignal = make(chan bool) // a channel to signal quitting the program
-
 )
 
 // check panics if passed an error
@@ -39,10 +34,10 @@ func main() {
 	b := eng.newBuffer("")
 
 	// initialize ui frontend
-	var err error
-	ui, err = selectUI("terminal")
+	ui, err := selectUI("terminal")
 	check(err)
-	check(ui.Init(b))
+	ui.Init(b)
+	check(err)
 	defer ui.Close()
 	ui.Draw()
 
@@ -59,14 +54,14 @@ func main() {
 		for ev := range uiEvents {
 			switch ev.Type {
 			case UIEventKey:
+				ctx := new(cmdContext)
+				ctx.point = &(ui.CurrentBuffer().cs)
 				cmd, ok := cmdKeys[ev.Key]
 				if !ok && ev.Char != 0 {
-					debug(false, fmt.Sprintf("ok : %v, char : %v, text : %v", ok, ev.Char, eng.text(ui.CurrentBuffer())))
-					insertChar(ev.Char)
+					cmd = insertChar
+					ctx.char = ev.Char
 				}
-				if ok {
-					cmd()
-				}
+				cmd(ctx)
 			case UIEventError:
 				panic(ev.Err)
 			}
