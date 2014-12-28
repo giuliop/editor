@@ -24,6 +24,7 @@ type textEngine interface {
 	statusLine(b *buffer) []interface{}
 
 	cursorLine(b *buffer) int
+	cursorPos(b *buffer) int
 }
 
 // engineModel is the engine representation of engine editor
@@ -36,6 +37,7 @@ type buffer struct {
 	text     []line
 	cs       mark
 	marks    []mark
+	mod      mode
 	name     string
 	filename string
 	fileSync time.Time
@@ -44,6 +46,15 @@ type buffer struct {
 
 // line represent a line in a buffer
 type line []rune
+
+//mode represents an editing mode for the editor
+type mode int
+
+const (
+	insertMode mode = iota
+	normalMode
+	commandMode
+)
 
 // initengine returns the engine editor after having initialized it (for now with one empty buffer)
 func initEngine() textEngine {
@@ -69,6 +80,10 @@ func (eng *engine) text(b *buffer) []line {
 
 func (eng *engine) cursorLine(b *buffer) int {
 	return b.cs.line
+}
+
+func (eng *engine) cursorPos(b *buffer) int {
+	return b.cs.pos
 }
 
 func (eng *engine) statusLine(b *buffer) []interface{} {
@@ -115,8 +130,8 @@ func (eng *engine) deleteCharBackward(m mark) mark {
 		if m.atFirstLine() {
 			return m
 		}
-		eng.deleteLine(m)
 		m.line -= 1
+		eng.joinLineBelow(m)
 		// if last line delete newline char
 		if m.atLastLine() {
 			b.text[m.line] = b.text[m.line][:m.lastCharPos()]
@@ -127,6 +142,15 @@ func (eng *engine) deleteCharBackward(m mark) mark {
 		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)
 	}
 	return m
+}
+
+func (eng *engine) joinLineBelow(m mark) {
+	if m.atLastLine() {
+		return
+	}
+	m.buf.text[m.line] = append(m.buf.text[m.line][:m.lastCharPos()],
+		m.buf.text[m.line+1]...)
+	eng.deleteLine(mark{m.line + 1, m.pos, m.buf})
 }
 
 func (eng *engine) deleteLine(m mark) {

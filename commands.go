@@ -20,8 +20,26 @@ type cmdContext struct {
 
 type cmdFunc func(ctx *cmdContext)
 
-var cmdNames = map[string]cmdFunc{}
-var cmdKeys = map[Key]cmdFunc{
+var cmdKeys [2]map[Key]cmdFunc
+
+func initCmdTables() {
+	cmdKeys[insertMode] = cmdKeysInsertMode
+	cmdKeys[normalMode] = cmdKeysNormalMode
+}
+
+var cmdKeysNormalMode = map[Key]cmdFunc{
+	KeyEsc: exitProgram,
+}
+
+var cmdCharsNormalMode = map[rune]cmdFunc{
+	'i': enterInsertMode,
+	'h': moveCursorLeft,
+	'j': moveCursorDown,
+	'k': moveCursorUp,
+	'l': moveCursorRight,
+}
+
+var cmdKeysInsertMode = map[Key]cmdFunc{
 	KeyEsc:        exitProgram,
 	KeyBackspace:  deleteCharBackward,
 	KeyBackspace2: deleteCharBackward,
@@ -29,6 +47,31 @@ var cmdKeys = map[Key]cmdFunc{
 	KeySpace:      insertSpace,
 	KeyEnter:      insertNewLine,
 	KeyCtrlJ:      insertNewLine,
+	KeyCtrlC:      enterNormalMode,
+}
+
+func enterNormalMode(ctx *cmdContext) {
+	ctx.point.buf.mod = normalMode
+}
+
+func enterInsertMode(ctx *cmdContext) {
+	ctx.point.buf.mod = insertMode
+}
+
+func moveCursorLeft(ctx *cmdContext) {
+	ctx.point.moveLeft(1)
+}
+
+func moveCursorRight(ctx *cmdContext) {
+	ctx.point.moveRight(1)
+}
+
+func moveCursorUp(ctx *cmdContext) {
+	ctx.point.moveUp(1)
+}
+
+func moveCursorDown(ctx *cmdContext) {
+	ctx.point.moveDown(1)
 }
 
 func exitProgram(ctx *cmdContext) {

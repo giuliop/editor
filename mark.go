@@ -34,6 +34,9 @@ func (m *mark) checkPos() {
 	if m.pos > m.lastCharPos() {
 		m.pos = m.lastCharPos()
 	}
+	if m.pos < 0 {
+		m.pos = 0
+	}
 }
 
 func (m *mark) moveUp(steps int) {
@@ -53,21 +56,36 @@ func (m *mark) moveDown(steps int) {
 }
 
 func (m *mark) moveRight(steps int) {
-	if !(m.pos > m.lastCharPos()) {
-		m.pos += 1
-	} else {
-		if !m.atLastLine() {
+	maxY := m.maxLine()
+	for steps > 0 {
+		maxX := m.lastCharPos()
+		if maxX >= m.pos+steps {
+			m.pos += steps
+			break
+		}
+		if m.line < maxY {
+			steps -= (maxX - m.pos + 1)
 			m.set(m.line+1, 0)
+		} else {
+			m.pos = maxX
+			break
 		}
 	}
 }
 
 func (m *mark) moveLeft(steps int) {
-	if !m.atLineStart() {
-		m.pos -= 1
-	} else {
-		if !m.atFirstLine() {
-			m.set(m.line-1, len(m.buf.text[m.line-1])-1)
+	for steps > 0 {
+		if m.pos-steps >= 0 {
+			m.pos -= steps
+			break
+		}
+		if m.line > 0 {
+			steps -= (m.pos + 1)
+			m.line -= 1
+			m.pos = m.lastCharPos()
+		} else {
+			m.pos = 0
+			break
 		}
 	}
 }

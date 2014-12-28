@@ -25,6 +25,9 @@ func debug(stop bool, msg string) {
 		panic(msg)
 	}
 }
+func init() {
+	initCmdTables()
+}
 
 func main() {
 	// initialize internal engine
@@ -52,20 +55,28 @@ func main() {
 	//activate command manager
 	go func() {
 		for ev := range uiEvents {
+			b := ui.CurrentBuffer()
 			switch ev.Type {
 			case UIEventKey:
+				var cmd cmdFunc
 				ctx := new(cmdContext)
-				ctx.point = &(ui.CurrentBuffer().cs)
-				cmd, ok := cmdKeys[ev.Key]
-				if !ok && ev.Char != 0 {
-					cmd = insertChar
+				ctx.point = &(b.cs)
+				if ev.Char != 0 {
 					ctx.char = ev.Char
+					if b.mod == insertMode {
+						cmd = insertChar
+					}
+					if b.mod == normalMode {
+						cmd = cmdCharsNormalMode[ev.Char]
+					}
+				} else {
+					cmd = cmdKeys[b.mod][ev.Key]
 				}
 				if cmd != nil {
 					cmd(ctx)
 				}
 			case UIEventError:
-				panic(ev.Err)
+				check(ev.Err)
 			}
 			ui.Draw()
 		}

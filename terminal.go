@@ -24,21 +24,21 @@ func (t *terminal) Close() {
 }
 
 func (t *terminal) Draw() {
-	debug := true
+	_debug := true
 	t.clear()
 	// viPos tracks the visual position of chars in the line since some chars
 	// might take two spaces on screen
-	var viPos int
-	for i, line := range eng.text(t.CurrentBuffer()) {
-		viPos = 0
+	b := t.CurrentBuffer()
+	for i, line := range eng.text(b) {
+		viPos := 0
 		for _, ch := range line {
 			t.setCell(viPos, i, ch)
 			viPos += runewidth.RuneWidth(ch)
 		}
 	}
-	if debug {
+	if _debug {
 		offset := 80
-		for l, line := range eng.text(t.CurrentBuffer()) {
+		for l, line := range eng.text(b) {
 			s := fmt.Sprintf("%q", line)
 			for c, ch := range s {
 				t.setCell(c+offset, l, ch)
@@ -46,7 +46,10 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
-	t.setCursor(viPos, eng.cursorLine(t.CurrentBuffer()))
+	debug(false, "line text : "+fmt.Sprint(eng.text(b)[eng.cursorLine(b)]))
+	debug(false, "cursorPos : "+fmt.Sprint(eng.cursorPos(b)))
+	stringBeforeCs := string(eng.text(b)[eng.cursorLine(b)][:eng.cursorPos(b)])
+	t.setCursor(runewidth.StringWidth(stringBeforeCs), eng.cursorLine(b))
 	t.flush()
 }
 
