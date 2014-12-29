@@ -33,6 +33,7 @@ var cmdKeysNormalMode = map[Key]cmdFunc{
 
 var cmdCharsNormalMode = map[rune]cmdFunc{
 	'i': enterInsertMode,
+	'a': enterInsertModeAsAppend,
 	'h': moveCursorLeft,
 	'j': moveCursorDown,
 	'k': moveCursorUp,
@@ -52,10 +53,21 @@ var cmdKeysInsertMode = map[Key]cmdFunc{
 
 func enterNormalMode(ctx *cmdContext) {
 	ctx.point.buf.mod = normalMode
+	if !ctx.point.atLineStart() {
+		ctx.point.moveLeft(1)
+	}
 }
 
 func enterInsertMode(ctx *cmdContext) {
 	ctx.point.buf.mod = insertMode
+}
+
+func enterInsertModeAsAppend(ctx *cmdContext) {
+	ctx.point.buf.mod = insertMode
+	// move cursor right unless empty line
+	if !ctx.point.emptyLine() {
+		ctx.point.moveRight(1)
+	}
 }
 
 func moveCursorLeft(ctx *cmdContext) {
@@ -84,21 +96,20 @@ func deleteCharBackward(ctx *cmdContext) {
 
 func insertTab(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, '\t')
-	ctx.point.pos++
+	ctx.point.moveRight(1)
 }
 
 func insertSpace(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, ' ')
-	ctx.point.pos++
+	ctx.point.moveRight(1)
 }
 
 func insertNewLine(ctx *cmdContext) {
 	eng.insertNewLineChar(*ctx.point)
-	ctx.point.pos = 0
-	ctx.point.line += 1
+	ctx.point.set(ctx.point.line+1, 0)
 }
 
 func insertChar(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, ctx.char)
-	ctx.point.pos++
+	ctx.point.moveRight(1)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/mattn/go-runewidth"
 	"github.com/nsf/termbox-go"
 )
@@ -46,8 +47,6 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
-	debug(false, "line text : "+fmt.Sprint(eng.text(b)[eng.cursorLine(b)]))
-	debug(false, "cursorPos : "+fmt.Sprint(eng.cursorPos(b)))
 	stringBeforeCs := string(eng.text(b)[eng.cursorLine(b)][:eng.cursorPos(b)])
 	t.setCursor(runewidth.StringWidth(stringBeforeCs), eng.cursorLine(b))
 	t.flush()

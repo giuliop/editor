@@ -102,7 +102,7 @@ func (eng *engine) insertChar(m mark, ch rune) {
 func (eng *engine) insertNewLineChar(m mark) {
 	b := m.buf
 	eng.insertLineBelow(m)
-	copy(b.text[m.line+1], b.text[m.line][m.pos:])
+	b.text[m.line+1] = append(b.text[m.line+1], b.text[m.line][m.pos:m.lastCharPos()+1]...)
 	b.text[m.line] = append(b.text[m.line][:m.pos], '\n')
 }
 
@@ -112,12 +112,11 @@ func newLine() line {
 
 func (eng *engine) insertLineBelow(m mark) {
 	b := m.buf
-	if m.atLastLine() {
-		b.text = append(b.text, newLine())
-	} else {
-		b.text = append(b.text, nil)
-		copy(b.text[m.line+1:], b.text[m.line:])
-		b.text[m.line] = newLine()
+	b.text = append(b.text, newLine())
+	m2 := mark{m.line + 1, 0, m.buf}
+	if !(m2.line == len(b.text)-1) {
+		copy(b.text[m2.line+1:], b.text[m2.line:])
+		b.text[m2.line] = newLine()
 	}
 }
 
@@ -134,7 +133,7 @@ func (eng *engine) deleteCharBackward(m mark) mark {
 		eng.joinLineBelow(m)
 		// if last line delete newline char
 		if m.atLastLine() {
-			b.text[m.line] = b.text[m.line][:m.lastCharPos()]
+			b.text[m.line] = b.text[m.line][:m.lastCharPos()+1]
 		}
 		m.pos = m.lastCharPos() + 1
 	} else {
@@ -148,9 +147,9 @@ func (eng *engine) joinLineBelow(m mark) {
 	if m.atLastLine() {
 		return
 	}
-	m.buf.text[m.line] = append(m.buf.text[m.line][:m.lastCharPos()],
+	m.buf.text[m.line] = append(m.buf.text[m.line][:m.lastCharPos()+1],
 		m.buf.text[m.line+1]...)
-	eng.deleteLine(mark{m.line + 1, m.pos, m.buf})
+	eng.deleteLine(mark{m.line + 1, 0, m.buf})
 }
 
 func (eng *engine) deleteLine(m mark) {

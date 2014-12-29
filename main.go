@@ -15,16 +15,14 @@ func check(e error) {
 }
 
 // debug writes msg to a file called debug and optionally panics based on the value of stop
-func debug(stop bool, msg string) {
+func debug(msg string) {
 	f, err := os.OpenFile("debug", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	defer f.Close()
 	check(err)
 	_, err = f.WriteString(msg + "\n")
 	check(err)
-	if stop {
-		panic(msg)
-	}
 }
+
 func init() {
 	initCmdTables()
 }
