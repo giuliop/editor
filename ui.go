@@ -25,6 +25,7 @@ func selectUI(name string) (UI, error) {
 }
 
 type UIEvent struct {
+	Buf    *buffer
 	Type   UIEventType // one of Event* constants
 	Mod    UIModifier  // one of Mod* constants or 0
 	Key    Key         // one of Key* constants, invalid if 'Char' is not 0

@@ -47,6 +47,7 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
+	log(fmt.Sprintf("cursorPos : %v", eng.cursorPos(b)))
 	stringBeforeCs := string(eng.text(b)[eng.cursorLine(b)][:eng.cursorPos(b)])
 	t.setCursor(runewidth.StringWidth(stringBeforeCs), eng.cursorLine(b))
 	t.flush()
@@ -87,6 +88,7 @@ func (t *terminal) hideCursor() {
 func (t *terminal) PollEvent() UIEvent {
 	ev := termbox.PollEvent()
 	return UIEvent{
+		t.curBuf,
 		UIEventType(ev.Type),
 		UIModifier(ev.Mod),
 		Key(ev.Key),

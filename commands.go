@@ -13,12 +13,12 @@ type cmdContext struct {
 	times  int
 	action string
 	object string
-	char   rune
+	key    rune
 	dir    direction
 	point  *mark
 }
 
-type cmdFunc func(ctx *cmdContext)
+type cmdFunc func(ctx *cmdContext) (done bool)
 
 var cmdKeys [2]map[Key]cmdFunc
 
@@ -51,65 +51,78 @@ var cmdKeysInsertMode = map[Key]cmdFunc{
 	KeyCtrlC:      enterNormalMode,
 }
 
-func enterNormalMode(ctx *cmdContext) {
+func enterNormalMode(ctx *cmdContext) bool {
 	ctx.point.buf.mod = normalMode
 	if !ctx.point.atLineStart() {
 		ctx.point.moveLeft(1)
 	}
+	return true
 }
 
-func enterInsertMode(ctx *cmdContext) {
+func enterInsertMode(ctx *cmdContext) bool {
 	ctx.point.buf.mod = insertMode
+	return true
 }
 
-func enterInsertModeAsAppend(ctx *cmdContext) {
+func enterInsertModeAsAppend(ctx *cmdContext) bool {
 	ctx.point.buf.mod = insertMode
 	// move cursor right unless empty line
 	if !ctx.point.emptyLine() {
 		ctx.point.moveRight(1)
 	}
+	return true
 }
 
-func moveCursorLeft(ctx *cmdContext) {
+func moveCursorLeft(ctx *cmdContext) bool {
 	ctx.point.moveLeft(1)
+	return true
 }
 
-func moveCursorRight(ctx *cmdContext) {
+func moveCursorRight(ctx *cmdContext) bool {
 	ctx.point.moveRight(1)
+	return true
 }
 
-func moveCursorUp(ctx *cmdContext) {
+func moveCursorUp(ctx *cmdContext) bool {
 	ctx.point.moveUp(1)
+	return true
 }
 
-func moveCursorDown(ctx *cmdContext) {
+func moveCursorDown(ctx *cmdContext) bool {
 	ctx.point.moveDown(1)
+	return true
 }
 
-func exitProgram(ctx *cmdContext) {
+func exitProgram(ctx *cmdContext) bool {
 	exitSignal <- true
+	return true
 }
 
-func deleteCharBackward(ctx *cmdContext) {
+func deleteCharBackward(ctx *cmdContext) bool {
 	*ctx.point = eng.deleteCharBackward(*ctx.point)
+	return true
 }
 
-func insertTab(ctx *cmdContext) {
+func insertTab(ctx *cmdContext) bool {
 	eng.insertChar(*ctx.point, '\t')
 	ctx.point.moveRight(1)
+	return true
 }
 
-func insertSpace(ctx *cmdContext) {
+func insertSpace(ctx *cmdContext) bool {
 	eng.insertChar(*ctx.point, ' ')
 	ctx.point.moveRight(1)
+	return true
 }
 
-func insertNewLine(ctx *cmdContext) {
+func insertNewLine(ctx *cmdContext) bool {
 	eng.insertNewLineChar(*ctx.point)
 	ctx.point.set(ctx.point.line+1, 0)
+	return true
 }
 
-func insertChar(ctx *cmdContext) {
-	eng.insertChar(*ctx.point, ctx.char)
+func insertChar(ctx *cmdContext) bool {
+	eng.insertChar(*ctx.point, ctx.key)
 	ctx.point.moveRight(1)
+	return true
 }

@@ -14,30 +14,27 @@ func check(e error) {
 	}
 }
 
-// debug writes msg to a file called debug and optionally panics based on the value of stop
-func debug(msg string) {
-	f, err := os.OpenFile("debug", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+// log writes msg to file log
+func log(msg string) {
+	f, err := os.OpenFile("log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	defer f.Close()
 	check(err)
 	_, err = f.WriteString(msg + "\n")
 	check(err)
 }
 
-func init() {
-	initCmdTables()
-}
-
 func main() {
-	// initialize internal engine
+	// initialize internal engine and create an empty buffer as current buffer
 	eng = initEngine()
-
-	// create an empty buffer as current buffer
 	b := eng.newBuffer("")
+
+	// init the command shortcut tables
+	initCmdTables()
 
 	// initialize ui frontend
 	ui, err := selectUI("terminal")
 	check(err)
-	ui.Init(b)
+	err = ui.Init(b)
 	check(err)
 	defer ui.Close()
 	ui.Draw()
@@ -52,31 +49,17 @@ func main() {
 
 	//activate command manager
 	go func() {
+		// activate key command manager
+		keyEvents := make(chan UIEvent, 100)
+		go manageEventKey(ui, keyEvents)
+		// listen for events and route them to appropriate channel
 		for ev := range uiEvents {
-			b := ui.CurrentBuffer()
 			switch ev.Type {
 			case UIEventKey:
-				var cmd cmdFunc
-				ctx := new(cmdContext)
-				ctx.point = &(b.cs)
-				if ev.Char != 0 {
-					ctx.char = ev.Char
-					if b.mod == insertMode {
-						cmd = insertChar
-					}
-					if b.mod == normalMode {
-						cmd = cmdCharsNormalMode[ev.Char]
-					}
-				} else {
-					cmd = cmdKeys[b.mod][ev.Key]
-				}
-				if cmd != nil {
-					cmd(ctx)
-				}
+				keyEvents <- ev
 			case UIEventError:
 				check(ev.Err)
 			}
-			ui.Draw()
 		}
 	}()
 

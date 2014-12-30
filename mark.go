@@ -32,6 +32,15 @@ func (m *mark) lastCharPos() int {
 	return last
 }
 
+func (m *mark) maxCursPos() int {
+	max := m.lastCharPos() + 1
+	// in normal mode we want the cursor one position to the left, unless it is an empty line
+	if m.buf.mod == normalMode && max > 0 {
+		max -= 1
+	}
+	return max
+}
+
 func (m *mark) emptyLine() bool {
 	return m.lastCharPos() == -1
 }
@@ -43,14 +52,12 @@ func (m *mark) maxLine() int {
 // fixPos checks that the mark is within the line, if it is over the end of the line
 // puts the cursor back to the end, if before start of line, back to start of line
 func (m *mark) fixPos() {
-	// if in insert mode max position is after the last char
-	max := m.lastCharPos() + 1
-	// in normal mode we want the cursor one position to the left, unless it is an empty line
-	if m.buf.mod == normalMode && max > 0 {
-		max -= 1
-	}
+	max := m.maxCursPos()
 	if m.pos > max {
 		m.pos = max
+	}
+	if m.pos < 0 {
+		m.pos = 0
 	}
 }
 
@@ -73,7 +80,7 @@ func (m *mark) moveDown(steps int) {
 func (m *mark) moveRight(steps int) {
 	maxY := m.maxLine()
 	for steps > 0 {
-		maxX := m.lastCharPos() + 1
+		maxX := m.maxCursPos()
 		if maxX >= m.pos+steps {
 			m.pos += steps
 			break
@@ -86,7 +93,6 @@ func (m *mark) moveRight(steps int) {
 			break
 		}
 	}
-	m.fixPos()
 }
 
 func (m *mark) moveLeft(steps int) {
@@ -99,6 +105,7 @@ func (m *mark) moveLeft(steps int) {
 			steps -= (m.pos + 1)
 			m.line -= 1
 			m.pos = m.lastCharPos()
+			m.fixPos()
 		} else {
 			m.pos = 0
 			break
