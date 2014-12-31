@@ -47,7 +47,7 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
-	log(fmt.Sprintf("cursorPos : %v", eng.cursorPos(b)))
+	//log(fmt.Sprintf("cursorPos : %v", eng.cursorPos(b)))
 	stringBeforeCs := string(eng.text(b)[eng.cursorLine(b)][:eng.cursorPos(b)])
 	t.setCursor(runewidth.StringWidth(stringBeforeCs), eng.cursorLine(b))
 	t.flush()

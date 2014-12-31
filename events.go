@@ -1,34 +1,33 @@
 package main
 
 func manageEventKey(ui UI, keyEvents chan UIEvent) {
-	var (
-		cmd     cmdFunc
-		ctx     *cmdContext
-		cmdDone bool = true
-	)
+	ctx := &cmdContext{}
 	for ev := range keyEvents {
 		b := ev.Buf
 		mod := b.mod
-		if cmdDone {
+		if ctx.cmd == nil && !ctx.save {
 			ctx = &cmdContext{point: &(b.cs)}
 		}
 
 		if ev.Char != 0 {
 			ctx.key = ev.Char
-			if cmdDone {
+			if ctx.cmd == nil {
 				switch mod {
 				case insertMode:
-					cmd = insertChar
+					ctx.cmd = insertChar
 				case normalMode:
-					cmd = cmdCharsNormalMode[ev.Char]
+					ctx.cmd = cmdCharsNormalMode[ev.Char]
 				}
 			}
 		} else {
-			cmd = cmdKeys[mod][ev.Key]
+			ctx.cmd = cmdKeys[mod][ev.Key]
 		}
 
-		if cmd != nil {
-			cmdDone = cmd(ctx)
+		if ctx.cmd != nil {
+			cmd := ctx.cmd
+			ctx.cmd = nil
+			ctx.save = false
+			cmd(ctx)
 		}
 		ui.Draw()
 	}

@@ -120,8 +120,8 @@ func (eng *engine) insertLineBelow(m mark) {
 	}
 }
 
-// deleteCharBackward deleted the character before the mark and returns the new postion of the mark
-// to be used to move the cursor if needed
+// deleteCharBackward deleted the character before the mark and returns
+// the new postion of the mark to be used to move the cursor if needed
 func (eng *engine) deleteCharBackward(m mark) mark {
 	b := m.buf
 	// if empty line delete it (unless first line in buffer)
@@ -130,12 +130,12 @@ func (eng *engine) deleteCharBackward(m mark) mark {
 			return m
 		}
 		m.line -= 1
+		m.pos = m.lastCharPos() + 1
 		eng.joinLineBelow(m)
 		// if last line delete newline char
 		if m.atLastLine() {
 			b.text[m.line] = b.text[m.line][:m.lastCharPos()+1]
 		}
-		m.pos = m.lastCharPos() + 1
 	} else {
 		m.pos -= 1
 		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)

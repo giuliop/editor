@@ -1,5 +1,10 @@
 package main
 
+import (
+	"strconv"
+	"unicode"
+)
+
 type direction int
 
 const (
@@ -10,15 +15,14 @@ const (
 )
 
 type cmdContext struct {
-	times  int
-	action string
-	object string
-	key    rune
-	dir    direction
-	point  *mark
+	num   int
+	key   rune
+	cmd   cmdFunc
+	point *mark
+	save  bool
 }
 
-type cmdFunc func(ctx *cmdContext) (done bool)
+type cmdFunc func(ctx *cmdContext)
 
 var cmdKeys [2]map[Key]cmdFunc
 
@@ -32,12 +36,22 @@ var cmdKeysNormalMode = map[Key]cmdFunc{
 }
 
 var cmdCharsNormalMode = map[rune]cmdFunc{
-	'i': enterInsertMode,
-	'a': enterInsertModeAsAppend,
+	'i': insertAtCs,
+	'a': appendAtCs,
 	'h': moveCursorLeft,
 	'j': moveCursorDown,
 	'k': moveCursorUp,
 	'l': moveCursorRight,
+	'0': number,
+	'1': number,
+	'2': number,
+	'3': number,
+	'4': number,
+	'5': number,
+	'6': number,
+	'7': number,
+	'8': number,
+	'9': number,
 }
 
 var cmdKeysInsertMode = map[Key]cmdFunc{
@@ -48,81 +62,90 @@ var cmdKeysInsertMode = map[Key]cmdFunc{
 	KeySpace:      insertSpace,
 	KeyEnter:      insertNewLine,
 	KeyCtrlJ:      insertNewLine,
-	KeyCtrlC:      enterNormalMode,
+	KeyCtrlC:      toNormalMode,
 }
 
-func enterNormalMode(ctx *cmdContext) bool {
+func toNormalMode(ctx *cmdContext) {
 	ctx.point.buf.mod = normalMode
 	if !ctx.point.atLineStart() {
 		ctx.point.moveLeft(1)
 	}
-	return true
 }
 
-func enterInsertMode(ctx *cmdContext) bool {
+func insertAtCs(ctx *cmdContext) {
 	ctx.point.buf.mod = insertMode
-	return true
 }
 
-func enterInsertModeAsAppend(ctx *cmdContext) bool {
-	ctx.point.buf.mod = insertMode
+func appendAtCs(ctx *cmdContext) {
 	// move cursor right unless empty line
+	ctx.point.buf.mod = insertMode
 	if !ctx.point.emptyLine() {
 		ctx.point.moveRight(1)
 	}
-	return true
 }
 
-func moveCursorLeft(ctx *cmdContext) bool {
-	ctx.point.moveLeft(1)
-	return true
+func number(ctx *cmdContext) {
+	if unicode.IsDigit(ctx.key) {
+		num, err := strconv.Atoi(strconv.Itoa(ctx.num) + string(ctx.key))
+		if err == nil {
+			ctx.num = num
+		}
+		ctx.save = true
+	}
 }
 
-func moveCursorRight(ctx *cmdContext) bool {
-	ctx.point.moveRight(1)
-	return true
+func moveCursorLeft(ctx *cmdContext) {
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	ctx.point.moveLeft(ctx.num)
 }
 
-func moveCursorUp(ctx *cmdContext) bool {
-	ctx.point.moveUp(1)
-	return true
+func moveCursorRight(ctx *cmdContext) {
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	ctx.point.moveRight(ctx.num)
 }
 
-func moveCursorDown(ctx *cmdContext) bool {
-	ctx.point.moveDown(1)
-	return true
+func moveCursorUp(ctx *cmdContext) {
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	ctx.point.moveUp(ctx.num)
 }
 
-func exitProgram(ctx *cmdContext) bool {
+func moveCursorDown(ctx *cmdContext) {
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	ctx.point.moveDown(ctx.num)
+}
+
+func exitProgram(ctx *cmdContext) {
 	exitSignal <- true
-	return true
 }
 
-func deleteCharBackward(ctx *cmdContext) bool {
+func deleteCharBackward(ctx *cmdContext) {
 	*ctx.point = eng.deleteCharBackward(*ctx.point)
-	return true
 }
 
-func insertTab(ctx *cmdContext) bool {
+func insertTab(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, '\t')
 	ctx.point.moveRight(1)
-	return true
 }
 
-func insertSpace(ctx *cmdContext) bool {
+func insertSpace(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, ' ')
 	ctx.point.moveRight(1)
-	return true
 }
 
-func insertNewLine(ctx *cmdContext) bool {
+func insertNewLine(ctx *cmdContext) {
 	eng.insertNewLineChar(*ctx.point)
 	ctx.point.set(ctx.point.line+1, 0)
-	return true
 }
 
-func insertChar(ctx *cmdContext) bool {
+func insertChar(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, ctx.key)
 	ctx.point.moveRight(1)
-	return true
 }
