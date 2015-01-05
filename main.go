@@ -51,7 +51,9 @@ func main() {
 	go func() {
 		// activate key command manager
 		keyEvents := make(chan UIEvent, 100)
-		go manageEventKey(ui, keyEvents)
+		cmdToExecute := make(chan *cmdContext, 10)
+		go manageEventKey(ui, keyEvents, cmdToExecute)
+		go executeCommands(ui, cmdToExecute)
 		// listen for events and route them to appropriate channel
 		for ev := range uiEvents {
 			switch ev.Type {

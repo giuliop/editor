@@ -91,6 +91,7 @@ func (t *terminal) PollEvent() UIEvent {
 		t.curBuf,
 		UIEventType(ev.Type),
 		UIModifier(ev.Mod),
+		ev.Ch == 0,
 		Key(ev.Key),
 		ev.Ch,
 		ev.Width,

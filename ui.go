@@ -25,16 +25,17 @@ func selectUI(name string) (UI, error) {
 }
 
 type UIEvent struct {
-	Buf    *buffer
-	Type   UIEventType // one of Event* constants
-	Mod    UIModifier  // one of Mod* constants or 0
-	Key    Key         // one of Key* constants, invalid if 'Char' is not 0
-	Char   rune        // a unicode character
-	Width  int         // width of the screen
-	Height int         // height of the screen
-	Err    error       // error in case if input failed
-	MouseX int         // x coord of mouse
-	MouseY int         // y coord of mouse
+	Buf     *buffer
+	Type    UIEventType // one of Event* constants
+	Mod     UIModifier  // one of Mod* constants or 0
+	Special bool        // true if a non character key was pressed
+	Key     Key         // one of Key* constants, invalid if 'Char' is not 0
+	Char    rune        // a unicode character
+	Width   int         // width of the screen
+	Height  int         // height of the screen
+	Err     error       // error in case if input failed
+	MouseX  int         // x coord of mouse
+	MouseY  int         // y coord of mouse
 }
 
 type UIEventType uint8

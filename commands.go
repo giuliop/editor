@@ -1,10 +1,5 @@
 package main
 
-import (
-	"strconv"
-	"unicode"
-)
-
 type direction int
 
 const (
@@ -15,14 +10,17 @@ const (
 )
 
 type cmdContext struct {
-	num   int
-	key   rune
-	cmd   cmdFunc
-	point *mark
-	save  bool
+	num    int
+	char   rune
+	cmd    cmdFunc
+	reg    region
+	point  *mark
+	custom string
 }
 
 type cmdFunc func(ctx *cmdContext)
+type region func(b buffer) (mark, mark)
+type parseFunc func(ev UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool)
 
 var cmdKeys [2]map[Key]cmdFunc
 
@@ -30,6 +28,14 @@ func initCmdTables() {
 	cmdKeys[insertMode] = cmdKeysInsertMode
 	cmdKeys[normalMode] = cmdKeysNormalMode
 }
+
+//type charCmdTable interface {
+//lookup(ch rune) (cmdFunc, cmdTable)
+//}
+
+//type keyCmdTable interface {
+//lookup(key Key) (cmdFunc, cmdTable)
+//}
 
 var cmdKeysNormalMode = map[Key]cmdFunc{
 	KeyEsc: exitProgram,
@@ -42,16 +48,7 @@ var cmdCharsNormalMode = map[rune]cmdFunc{
 	'j': moveCursorDown,
 	'k': moveCursorUp,
 	'l': moveCursorRight,
-	'0': number,
-	'1': number,
-	'2': number,
-	'3': number,
-	'4': number,
-	'5': number,
-	'6': number,
-	'7': number,
-	'8': number,
-	'9': number,
+	'd': delete_,
 }
 
 var cmdKeysInsertMode = map[Key]cmdFunc{
@@ -84,16 +81,6 @@ func appendAtCs(ctx *cmdContext) {
 	}
 }
 
-func number(ctx *cmdContext) {
-	if unicode.IsDigit(ctx.key) {
-		num, err := strconv.Atoi(strconv.Itoa(ctx.num) + string(ctx.key))
-		if err == nil {
-			ctx.num = num
-		}
-		ctx.save = true
-	}
-}
-
 func moveCursorLeft(ctx *cmdContext) {
 	if ctx.num == 0 {
 		ctx.num = 1
@@ -122,6 +109,17 @@ func moveCursorDown(ctx *cmdContext) {
 	ctx.point.moveDown(ctx.num)
 }
 
+func delete_(ctx *cmdContext) {
+	//if arg
+	//ctx.obj = waitForObj
+	//ctx.cmd = delete_
+	//return
+	//}
+	//if isNumber(ctx.char, ctx) {
+	//loadNumber(ctx.char, ctx)
+	//}
+}
+
 func exitProgram(ctx *cmdContext) {
 	exitSignal <- true
 }
@@ -146,6 +144,6 @@ func insertNewLine(ctx *cmdContext) {
 }
 
 func insertChar(ctx *cmdContext) {
-	eng.insertChar(*ctx.point, ctx.key)
+	eng.insertChar(*ctx.point, ctx.char)
 	ctx.point.moveRight(1)
 }
