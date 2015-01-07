@@ -1,5 +1,7 @@
 package main
 
+import "unicode"
+
 type direction int
 
 const (
@@ -10,56 +12,53 @@ const (
 )
 
 type cmdContext struct {
-	num    int
-	char   rune
+	num        int      // times to execute the command
+	char       rune     // optional char object
+	cmd        cmdFunc  // the commnad to execute
+	reg        region   // optional region object
+	point      *mark    // the cursor position
+	custom     string   // optional string object
+	customList []string // optional string slice object
+}
+
+type command struct {
 	cmd    cmdFunc
-	reg    region
-	point  *mark
-	custom string
+	parser parseFunc
 }
 
 type cmdFunc func(ctx *cmdContext)
-type region func(b buffer) (mark, mark)
-type parseFunc func(ev UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool)
+type parseFunc func(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool)
 
-var cmdKeys [2]map[Key]cmdFunc
+var cmdKeys [2]map[Key]command
 
 func initCmdTables() {
 	cmdKeys[insertMode] = cmdKeysInsertMode
 	cmdKeys[normalMode] = cmdKeysNormalMode
 }
 
-//type charCmdTable interface {
-//lookup(ch rune) (cmdFunc, cmdTable)
-//}
-
-//type keyCmdTable interface {
-//lookup(key Key) (cmdFunc, cmdTable)
-//}
-
-var cmdKeysNormalMode = map[Key]cmdFunc{
-	KeyEsc: exitProgram,
+var cmdKeysNormalMode = map[Key]command{
+	KeyEsc: command{exitProgram, nil},
 }
 
-var cmdCharsNormalMode = map[rune]cmdFunc{
-	'i': insertAtCs,
-	'a': appendAtCs,
-	'h': moveCursorLeft,
-	'j': moveCursorDown,
-	'k': moveCursorUp,
-	'l': moveCursorRight,
-	'd': delete_,
+var cmdCharsNormalMode = map[rune]command{
+	'i': command{insertAtCs, nil},
+	'a': command{appendAtCs, nil},
+	'h': command{moveCursorLeft, nil},
+	'j': command{moveCursorDown, nil},
+	'k': command{moveCursorUp, nil},
+	'l': command{moveCursorRight, nil},
+	'd': command{delete_, parseRegion},
 }
 
-var cmdKeysInsertMode = map[Key]cmdFunc{
-	KeyEsc:        exitProgram,
-	KeyBackspace:  deleteCharBackward,
-	KeyBackspace2: deleteCharBackward,
-	KeyTab:        insertTab,
-	KeySpace:      insertSpace,
-	KeyEnter:      insertNewLine,
-	KeyCtrlJ:      insertNewLine,
-	KeyCtrlC:      toNormalMode,
+var cmdKeysInsertMode = map[Key]command{
+	KeyEsc:        command{exitProgram, nil},
+	KeyBackspace:  command{deleteCharBackward, nil},
+	KeyBackspace2: command{deleteCharBackward, nil},
+	KeyTab:        command{insertTab, nil},
+	KeySpace:      command{insertSpace, nil},
+	KeyEnter:      command{insertNewLine, nil},
+	KeyCtrlJ:      command{insertNewLine, nil},
+	KeyCtrlC:      command{toNormalMode, nil},
 }
 
 func toNormalMode(ctx *cmdContext) {
@@ -118,6 +117,41 @@ func delete_(ctx *cmdContext) {
 	//if isNumber(ctx.char, ctx) {
 	//loadNumber(ctx.char, ctx)
 	//}
+}
+
+var regionFuncs = map[string]func(m mark) region{
+	"e": toWordEnd,
+	//"E":  toWORDEnd,
+	//"w":  toNextWordStart,
+	//"W":  toNextWORDStart,
+	//"b":  toWordStart,
+	//"B":  toWORDStart,
+	//"0":  toFirstCharInLine,
+	//"gh": toFirstCharInLine,
+	//"$":  toLastCharInLine,
+	//"gl": toLastCharInLine,
+	//"iw": innerword,
+	//"aw": aword,
+}
+
+func toWordEnd(m mark) region {
+	m2 := m
+	for {
+		m2.moveRight(1)
+		if m2.atLastLine() && m2.pos == m2.lastCharPos() {
+			return region{m, m2}
+		}
+		c := m2.char()
+		if !(unicode.IsLetter(c) || unicode.IsNumber(c)) {
+			m2.moveLeft(1)
+			return region{m, m2}
+		}
+	}
+}
+
+type region struct {
+	start mark
+	end   mark
 }
 
 func exitProgram(ctx *cmdContext) {

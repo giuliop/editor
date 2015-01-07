@@ -28,38 +28,93 @@ func manageEventKey(ui UI, keyEvents chan UIEvent, commands chan *cmdContext) {
 			nextParser = parseAction
 		}
 		var reconsumeEvent bool
-		nextParser, reconsumeEvent = nextParser(ev, ctx, commands)
+		nextParser, reconsumeEvent = nextParser(&ev, ctx, commands)
 		if reconsumeEvent {
 			reprocess <- ev
 		}
 	}
 }
 
-func parseAction(ev UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool) {
+func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool) {
+	// ev == nil means we were called for a timeout
+	if ev == nil {
+		return parseAction, false
+	}
 	b := ev.Buf
 	mode := b.mod
+	var parser parseFunc
 	if ev.Special {
-		ctx.cmd = cmdKeys[mode][ev.Key]
+		ctx.cmd = cmdKeys[mode][ev.Key].cmd
+		parser = cmdKeys[mode][ev.Key].parser
 		// else a char was pressed
 	} else {
 		switch mode {
-		// we insert it in insertMode
 		case insertMode:
+			// we insert the char in insertMode
 			ctx.cmd = insertChar
-			// if no cmd is waiting for input we look up the char command in
-			// normalMode; otherwise the previous cmd will receive it
+			// we look up the char command in normalMode
 		case normalMode:
-			ctx.cmd = cmdCharsNormalMode[ev.Char]
 			if isNumber(ev.Char, ctx) && ctx.cmd == nil {
 				loadNumber(ev.Char, ctx)
 				return parseAction, false
 			}
+			ctx.cmd = cmdCharsNormalMode[ev.Char].cmd
+			parser = cmdCharsNormalMode[ev.Char].parser
 		}
 	}
 	if ctx.cmd != nil {
 		ctx.point = &b.cs
 		ctx.char = ev.Char
-		cmds <- ctx
+		if parser == nil {
+			cmds <- ctx
+		}
 	}
-	return nil, false
+	return parser, false
+}
+
+func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool) {
+	// ev == nil means we were called for a timeout
+	// we'll use ctx.custom to build list of candiates
+	b := ev.Buf
+	if ev == nil {
+		if ctx.custom != "" {
+			ctx.point = &b.cs
+			ctx.reg = regionFuncs[ctx.custom](*ctx.point)
+			cmds <- ctx
+			return nil, false
+		} else {
+			return parseRegion, false
+		}
+	}
+	if isNumber(ev.Char, ctx) && ctx.custom == "" {
+		loadNumber(ev.Char, ctx)
+		return parseRegion, false
+	}
+	candidates := make([]string, 0, 20)
+	if ctx.custom == "" {
+		for key := range regionFuncs {
+			if rune(key[0]) == ev.Char {
+				candidates = append(candidates, key)
+			}
+		}
+	} else {
+		sofar := ctx.custom + string(ev.Char)
+		for _, c := range ctx.customList {
+			if c[:len(sofar)] == sofar {
+				candidates = append(candidates, c)
+			}
+		}
+	}
+	switch len(candidates) {
+	case 0:
+		return nil, false
+	case 1:
+		ctx.point = &b.cs
+		ctx.reg = regionFuncs[ctx.custom](*ctx.point)
+		cmds <- ctx
+		return nil, false
+	default:
+		ctx.customList = candidates
+		return parseRegion, false
+	}
 }

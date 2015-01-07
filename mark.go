@@ -121,3 +121,7 @@ func (m *mark) set(line, pos int) {
 func (m *mark) hide() {
 	m.set(-1, -1)
 }
+
+func (m *mark) char() rune {
+	return m.buf.text[m.line][m.pos]
+}
