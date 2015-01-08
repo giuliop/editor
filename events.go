@@ -79,7 +79,7 @@ func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc
 	if ev == nil {
 		if ctx.custom != "" {
 			ctx.point = &b.cs
-			ctx.reg = regionFuncs[ctx.custom](*ctx.point)
+			ctx.reg = regionFuncs[ctx.custom]
 			cmds <- ctx
 			return nil, false
 		} else {
@@ -110,7 +110,7 @@ func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc
 		return nil, false
 	case 1:
 		ctx.point = &b.cs
-		ctx.reg = regionFuncs[ctx.custom](*ctx.point)
+		ctx.reg = regionFuncs[candidates[0]]
 		cmds <- ctx
 		return nil, false
 	default:

@@ -20,6 +20,7 @@ type textEngine interface {
 	//insertLineAbove()
 	insertLineBelow(m mark)
 	deleteLine(m mark)
+	deleteRegion(r region) mark
 	text(b *buffer) []line
 	statusLine(b *buffer) []interface{}
 
@@ -155,6 +156,35 @@ func (eng *engine) joinLineBelow(m mark) {
 func (eng *engine) deleteLine(m mark) {
 	b := m.buf
 	b.text = append(b.text[:m.line], b.text[m.line+1:]...)
+}
+
+func (eng *engine) deleteRegion(r region) mark {
+	var fr, to mark
+	switch {
+	case r.start.line < r.end.line:
+		fr, to = r.start, r.end
+	case r.start.line > r.end.line:
+		to, fr = r.start, r.end
+	case r.start.pos < r.end.pos:
+		fr, to = r.start, r.end
+	default:
+		to, fr = r.start, r.end
+	}
+	b := fr.buf
+	if fr.line == to.line {
+		b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[fr.line][to.pos+1:]...)
+	} else {
+		// delete all lines between the two marks
+		m := mark{fr.line + 1, fr.pos, fr.buf}
+		for ; m.line < to.line; m.line++ {
+			eng.deleteLine(m)
+		}
+		//delete required chars from fr and to lines
+		b.text[fr.line] = b.text[fr.line][:fr.pos]
+		b.text[to.line] = b.text[to.line][to.pos+1:]
+	}
+	fr.fixPos()
+	return fr
 }
 
 func (eng *engine) DeleteCharForward() {

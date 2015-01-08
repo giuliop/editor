@@ -12,13 +12,13 @@ const (
 )
 
 type cmdContext struct {
-	num        int      // times to execute the command
-	char       rune     // optional char object
-	cmd        cmdFunc  // the commnad to execute
-	reg        region   // optional region object
-	point      *mark    // the cursor position
-	custom     string   // optional string object
-	customList []string // optional string slice object
+	num        int        // times to execute the command
+	char       rune       // optional char object
+	cmd        cmdFunc    // the commnad to execute
+	reg        regionFunc // optional region object
+	point      *mark      // the cursor position
+	custom     string     // optional string object
+	customList []string   // optional string slice object
 }
 
 type command struct {
@@ -109,17 +109,23 @@ func moveCursorDown(ctx *cmdContext) {
 }
 
 func delete_(ctx *cmdContext) {
-	//if arg
-	//ctx.obj = waitForObj
-	//ctx.cmd = delete_
-	//return
-	//}
-	//if isNumber(ctx.char, ctx) {
-	//loadNumber(ctx.char, ctx)
-	//}
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	for i := 0; i < ctx.num; i++ {
+		r := ctx.reg(*ctx.point)
+		*ctx.point = eng.deleteRegion(r)
+	}
+	ctx.point.buf.cs = *ctx.point
 }
 
-var regionFuncs = map[string]func(m mark) region{
+type region struct {
+	start mark
+	end   mark
+}
+type regionFunc func(m mark) region
+
+var regionFuncs = map[string]regionFunc{
 	"e": toWordEnd,
 	//"E":  toWORDEnd,
 	//"w":  toNextWordStart,
@@ -147,11 +153,6 @@ func toWordEnd(m mark) region {
 			return region{m, m2}
 		}
 	}
-}
-
-type region struct {
-	start mark
-	end   mark
 }
 
 func exitProgram(ctx *cmdContext) {

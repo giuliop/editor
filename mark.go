@@ -32,6 +32,10 @@ func (m *mark) lastCharPos() int {
 	return last
 }
 
+func (m *mark) lastCharInBuffer() bool {
+	return m.atLastLine() && m.pos == m.lastCharPos()
+}
+
 func (m *mark) maxCursPos() int {
 	max := m.lastCharPos() + 1
 	// in normal mode we want the cursor one position to the left, unless it is an empty line
