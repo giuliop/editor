@@ -22,29 +22,20 @@ func (m *mark) atLineStart() bool {
 	return m.pos == 0
 }
 
-// atLineEnd returns whether the mark is at line end, that is on the newline char;
-// note that if we are in normal mode on the last char of the last line (which has
-// no newline char) it returns false
+// atLineEnd returns whether the mark is at line end, that is on the newline char
+// (or endOfText for the last line)
 func (m *mark) atLineEnd() bool {
-	lineLen := len(m.buf.text[m.line]) - 1
-	if m.atLastLine() {
-		lineLen++
-	}
-	return m.pos == lineLen
+	return m.pos == len(m.buf.text[m.line])-1
 }
 
-// lastCharPos return the position of the last char in the line (before the newline
-// char if present. If the line is empty it returns -1
+func (m *mark) atEndOfText() bool {
+	return m.char() == endOfText
+}
+
+// lastCharPos return the position of the last char in the line before the newline
+// or endOfText char. If the line is empty it returns -1
 func (m *mark) lastCharPos() int {
-	last := len(m.buf.text[m.line]) - 1
-	if last >= 0 && m.buf.text[m.line][last] == '\n' {
-		last -= 1
-	}
-	return last
-}
-
-func (m *mark) lastCharInBuffer() bool {
-	return m.atLastLine() && m.pos == m.lastCharPos()
+	return len(m.buf.text[m.line]) - 2
 }
 
 func (m *mark) maxCursPos() int {
@@ -61,7 +52,7 @@ func (m *mark) emptyLine() bool {
 }
 
 func (m *mark) maxLine() int {
-	return len(m.buf.text) - 1
+	return len(m.buf.text) - 2
 }
 
 // fixPos checks that the mark is within the line, if it is over the end of the line

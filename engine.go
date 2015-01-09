@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+// when a file is opened in a buffer a newline char is added to the last line and a
+// new line with a endOfText char is added below. These are removed before saving
+// back to file
+const endOfText rune = 3
+
 // interalEditor specifies the api of the engine representation of buffers
 type textEngine interface {
 	newBuffer(name string) *buffer
@@ -67,11 +72,12 @@ func initEngine() textEngine {
 // newBuffer adds a new empty buffer to engine and returns a pointer to it
 func (eng *engine) newBuffer(name string) *buffer {
 	b := &buffer{
-		text: make([]line, 1, 20),
+		text: make([]line, 2, 20),
 		name: name,
 	}
 	b.cs = newMark(b)
 	b.text[0] = newLine()
+	b.text[1] = append(b.text[1], endOfText)
 	eng.bufs = append(eng.bufs, *b)
 	return b
 }
@@ -104,22 +110,24 @@ func (eng *engine) insertChar(m mark, ch rune) {
 func (eng *engine) insertNewLineChar(m mark) {
 	b := m.buf
 	eng.insertLineBelow(m)
-	b.text[m.line+1] = append(b.text[m.line+1], b.text[m.line][m.pos:m.lastCharPos()+1]...)
+	b.text[m.line+1] = append(line(nil), b.text[m.line][m.pos:]...)
 	b.text[m.line] = append(b.text[m.line][:m.pos], '\n')
 }
 
+// newLine returns a new line ending with last which should be either a newline char
+// or the endOfText char
 func newLine() line {
-	return make([]rune, 0, 100)
+	ln := make([]rune, 1, 100)
+	ln[0] = '\n'
+	return ln
 }
 
 func (eng *engine) insertLineBelow(m mark) {
 	b := m.buf
-	b.text = append(b.text, newLine())
+	b.text = append(b.text, nil)
 	m2 := mark{m.line + 1, 0, m.buf}
-	if !(m2.line == len(b.text)-1) {
-		copy(b.text[m2.line+1:], b.text[m2.line:])
-		b.text[m2.line] = newLine()
-	}
+	copy(b.text[m2.line+1:], b.text[m2.line:])
+	b.text[m2.line] = newLine()
 }
 
 // deleteCharBackward deletes the character before the mark and returns

@@ -31,12 +31,16 @@ func toWordEnd(m mark) region {
 	m2 := m
 	for {
 		m2.moveRight(1)
-		if m2.atLastLine() && m2.pos == m2.lastCharPos() {
+		if m2.atLineEnd() {
 			return region{m, m2}
 		}
 		c := m2.char()
 		if !(unicode.IsLetter(c) || unicode.IsNumber(c)) {
-			m2.moveLeft(1)
+			// we go back to the end of the word, unless we would go back to the
+			// initial position
+			if m2.pos != m.pos+1 {
+				m2.moveLeft(1)
+			}
 			return region{m, m2}
 		}
 	}
