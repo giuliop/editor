@@ -15,6 +15,7 @@ type textEngine interface {
 	insertChar(m mark, ch rune)
 	insertNewLineChar(m mark)
 	deleteCharBackward(m mark) mark
+	deleteCharForward(m mark)
 	//replaceChar(ch rune)
 	//insertString(s []rune)
 	//insertLineAbove()
@@ -121,11 +122,10 @@ func (eng *engine) insertLineBelow(m mark) {
 	}
 }
 
-// deleteCharBackward deleted the character before the mark and returns
+// deleteCharBackward deletes the character before the mark and returns
 // the new postion of the mark to be used to move the cursor if needed
 func (eng *engine) deleteCharBackward(m mark) mark {
 	b := m.buf
-	// if empty line delete it (unless first line in buffer)
 	if m.atLineStart() {
 		if m.atFirstLine() {
 			return m
@@ -133,15 +133,25 @@ func (eng *engine) deleteCharBackward(m mark) mark {
 		m.line -= 1
 		m.pos = m.lastCharPos() + 1
 		eng.joinLineBelow(m)
-		// if last line delete newline char
-		if m.atLastLine() {
-			b.text[m.line] = b.text[m.line][:m.lastCharPos()+1]
-		}
 	} else {
 		m.pos -= 1
 		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)
 	}
 	return m
+}
+
+// deleteCharForward deletes the character under the mark and returns
+// the new postion of the mark to be used to move the cursor if needed
+func (eng *engine) deleteCharForward(m mark) {
+	b := m.buf
+	if m.atLineEnd() {
+		if m.atLastLine() {
+			return
+		}
+		eng.joinLineBelow(m)
+	} else {
+		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)
+	}
 }
 
 func (eng *engine) joinLineBelow(m mark) {

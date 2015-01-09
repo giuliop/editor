@@ -1,16 +1,14 @@
 package main
 
-import "unicode"
+//type direction int
+//const (
+//right direction = iota
+//left
+//up
+//down
+//)
 
-type direction int
-
-const (
-	right direction = iota
-	left
-	up
-	down
-)
-
+// cmdContext is used to store all the info we need to process commands
 type cmdContext struct {
 	num        int        // times to execute the command
 	char       rune       // optional char object
@@ -22,11 +20,12 @@ type cmdContext struct {
 }
 
 type command struct {
-	cmd    cmdFunc
-	parser parseFunc
+	cmd    cmdFunc   // the command function
+	parser parseFunc // a function to parse command arguments (if needed)
 }
 
 type cmdFunc func(ctx *cmdContext)
+
 type parseFunc func(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool)
 
 var cmdKeys [2]map[Key]command
@@ -48,6 +47,7 @@ var cmdCharsNormalMode = map[rune]command{
 	'k': command{moveCursorUp, nil},
 	'l': command{moveCursorRight, nil},
 	'd': command{delete_, parseRegion},
+	'x': command{deleteCharForward, nil},
 }
 
 var cmdKeysInsertMode = map[Key]command{
@@ -59,6 +59,7 @@ var cmdKeysInsertMode = map[Key]command{
 	KeyEnter:      command{insertNewLine, nil},
 	KeyCtrlJ:      command{insertNewLine, nil},
 	KeyCtrlC:      command{toNormalMode, nil},
+	KeyDelete:     command{deleteCharForward, nil},
 }
 
 func toNormalMode(ctx *cmdContext) {
@@ -119,42 +120,6 @@ func delete_(ctx *cmdContext) {
 	ctx.point.buf.cs = *ctx.point
 }
 
-type region struct {
-	start mark
-	end   mark
-}
-type regionFunc func(m mark) region
-
-var regionFuncs = map[string]regionFunc{
-	"e": toWordEnd,
-	//"E":  toWORDEnd,
-	//"w":  toNextWordStart,
-	//"W":  toNextWORDStart,
-	//"b":  toWordStart,
-	//"B":  toWORDStart,
-	//"0":  toFirstCharInLine,
-	//"gh": toFirstCharInLine,
-	//"$":  toLastCharInLine,
-	//"gl": toLastCharInLine,
-	//"iw": innerword,
-	//"aw": aword,
-}
-
-func toWordEnd(m mark) region {
-	m2 := m
-	for {
-		m2.moveRight(1)
-		if m2.atLastLine() && m2.pos == m2.lastCharPos() {
-			return region{m, m2}
-		}
-		c := m2.char()
-		if !(unicode.IsLetter(c) || unicode.IsNumber(c)) {
-			m2.moveLeft(1)
-			return region{m, m2}
-		}
-	}
-}
-
 func exitProgram(ctx *cmdContext) {
 	exitSignal <- true
 }
@@ -181,4 +146,9 @@ func insertNewLine(ctx *cmdContext) {
 func insertChar(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, ctx.char)
 	ctx.point.moveRight(1)
+}
+
+func deleteCharForward(ctx *cmdContext) {
+	eng.deleteCharForward(*ctx.point)
+	ctx.point.fixPos()
 }

@@ -22,6 +22,17 @@ func (m *mark) atLineStart() bool {
 	return m.pos == 0
 }
 
+// atLineEnd returns whether the mark is at line end, that is on the newline char;
+// note that if we are in normal mode on the last char of the last line (which has
+// no newline char) it returns false
+func (m *mark) atLineEnd() bool {
+	lineLen := len(m.buf.text[m.line]) - 1
+	if m.atLastLine() {
+		lineLen++
+	}
+	return m.pos == lineLen
+}
+
 // lastCharPos return the position of the last char in the line (before the newline
 // char if present. If the line is empty it returns -1
 func (m *mark) lastCharPos() int {
