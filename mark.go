@@ -23,17 +23,20 @@ func (m *mark) atLineStart() bool {
 }
 
 // atLineEnd returns whether the mark is at line end, that is on the newline char
-// (or endOfText for the last line)
 func (m *mark) atLineEnd() bool {
 	return m.pos == len(m.buf.text[m.line])-1
 }
 
 func (m *mark) atEndOfText() bool {
-	return m.char() == endOfText
+	return m.atLastLine() && m.atLineEnd()
+}
+
+func (m *mark) atLastTextChar() bool {
+	return m.atLastLine() && m.pos == m.lastCharPos()
 }
 
 // lastCharPos return the position of the last char in the line before the newline
-// or endOfText char. If the line is empty it returns -1
+// If the line is empty it returns -1
 func (m *mark) lastCharPos() int {
 	return len(m.buf.text[m.line]) - 2
 }
@@ -52,7 +55,7 @@ func (m *mark) emptyLine() bool {
 }
 
 func (m *mark) maxLine() int {
-	return len(m.buf.text) - 2
+	return len(m.buf.text) - 1
 }
 
 // fixPos checks that the mark is within the line, if it is over the end of the line

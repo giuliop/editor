@@ -12,9 +12,9 @@ type region struct {
 // current cursor position as start mark)
 type regionFunc func(m mark) region
 
-var regionFuncs = map[string]regionFunc{
+var motions = map[string]regionFunc{
 	"e": toWordEnd,
-	//"E":  toWORDEnd,
+	"E": toWORDEnd,
 	//"w":  toNextWordStart,
 	//"W":  toNextWORDStart,
 	//"b":  toWordStart,
@@ -23,25 +23,72 @@ var regionFuncs = map[string]regionFunc{
 	//"gh": toFirstCharInLine,
 	//"$":  toLastCharInLine,
 	//"gl": toLastCharInLine,
-	//"iw": innerword,
-	//"aw": aword,
+}
+
+var regionFuncs = map[string]regionFunc{
+//"iw": innerword,
+//"aw": aword,
+}
+
+// we add all motiond to RegionFuncs since all motions are regionFuncs but not
+// vicecersa
+func init() {
+	for k, f := range motions {
+		regionFuncs[k] = f
+	}
+}
+
+var specialWordChars = map[rune]bool{
+	'_': true,
+}
+
+func isWordChar(c rune) bool {
+	return unicode.IsLetter(c) || unicode.IsNumber(c) || specialWordChars[c]
 }
 
 func toWordEnd(m mark) region {
 	m2 := m
+	start := isWordChar(m2.char())
 	for {
 		m2.moveRight(1)
-		if m2.atLineEnd() {
-			return region{m, m2}
-		}
 		c := m2.char()
-		if !(unicode.IsLetter(c) || unicode.IsNumber(c)) {
+		end := isWordChar(c)
+		switch {
+		case m2.atLastTextChar():
+			return region{m, m2}
+		case m2.pos == m2.lastCharPos():
+			return region{m, m2}
+		case start != end || unicode.IsSpace(c):
 			// we go back to the end of the word, unless we would go back to the
 			// initial position
-			if m2.pos != m.pos+1 {
+			if m2.line > m.line || m2.pos > m.pos+1 {
 				m2.moveLeft(1)
+				return region{m, m2}
 			}
+			if unicode.IsSpace(c) {
+				m2.moveRight(1)
+			}
+			start = isWordChar(m2.char())
+		}
+	}
+}
+
+func toWORDEnd(m mark) region {
+	m2 := m
+	for {
+		m2.moveRight(1)
+		switch {
+		case m2.atLastTextChar():
 			return region{m, m2}
+		case m2.pos == m2.lastCharPos():
+			return region{m, m2}
+		case unicode.IsSpace(m2.char()):
+			// we go back to the end of the word, unless we would go back to the
+			// initial position
+			if m2.line > m.line || m2.pos > m.pos+1 {
+				m2.moveLeft(1)
+				return region{m, m2}
+			}
 		}
 	}
 }

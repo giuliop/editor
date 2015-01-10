@@ -5,41 +5,13 @@ import (
 	"time"
 )
 
-// when a file is opened in a buffer a newline char is added to the last line and a
-// new line with a endOfText char is added below. These are removed before saving
-// back to file
-const endOfText rune = 3
-
-// interalEditor specifies the api of the engine representation of buffers
-type textEngine interface {
-	newBuffer(name string) *buffer
-	//openFile()
-	//closeBuffer()
-	//saveBuffer()
-
-	insertChar(m mark, ch rune)
-	insertNewLineChar(m mark)
-	deleteCharBackward(m mark) mark
-	deleteCharForward(m mark)
-	//replaceChar(ch rune)
-	//insertString(s []rune)
-	//insertLineAbove()
-	insertLineBelow(m mark)
-	deleteLine(m mark)
-	deleteRegion(r region) mark
-	text(b *buffer) []line
-	statusLine(b *buffer) []interface{}
-
-	cursorLine(b *buffer) int
-	cursorPos(b *buffer) int
-}
-
-// engineModel is the engine representation of engine editor
-type engine struct {
+// textEngine holds the buffers open in the editor and offers text manipulation
+// primitives
+type textEngine struct {
 	bufs []buffer // the open buffers
 }
 
-// buffer is the engine representation of a buffer
+// buffer is the representation of an open buffer
 type buffer struct {
 	text     []line
 	cs       mark
@@ -54,7 +26,7 @@ type buffer struct {
 // line represent a line in a buffer
 type line []rune
 
-//mode represents an editing mode for the editor
+//mode represents an editing mode for the buffer
 type mode int
 
 const (
@@ -63,53 +35,54 @@ const (
 	commandMode
 )
 
-// initengine returns the engine editor after having initialized it (for now with one empty buffer)
-func initEngine() textEngine {
-	eng := &engine{}
-	return eng
+// initTextEngine returns the textEngine editor after having initialized it
+func initTextEngine() *textEngine {
+	e := &textEngine{}
+	return e
 }
 
-// newBuffer adds a new empty buffer to engine and returns a pointer to it
-func (eng *engine) newBuffer(name string) *buffer {
+// newBuffer adds a new empty buffer to textEngine and returns a pointer to it
+// Note that the last line of a buffer ends with a newline which is removed before
+// saving to file
+func (e *textEngine) newBuffer(name string) *buffer {
 	b := &buffer{
-		text: make([]line, 2, 20),
+		text: make([]line, 1, 20),
 		name: name,
 	}
 	b.cs = newMark(b)
 	b.text[0] = newLine()
-	b.text[1] = append(b.text[1], endOfText)
-	eng.bufs = append(eng.bufs, *b)
+	e.bufs = append(e.bufs, *b)
 	return b
 }
 
-func (eng *engine) text(b *buffer) []line {
+func (e *textEngine) text(b *buffer) []line {
 	return b.text
 }
 
-func (eng *engine) cursorLine(b *buffer) int {
+func (e *textEngine) cursorLine(b *buffer) int {
 	return b.cs.line
 }
 
-func (eng *engine) cursorPos(b *buffer) int {
+func (e *textEngine) cursorPos(b *buffer) int {
 	return b.cs.pos
 }
 
-func (eng *engine) statusLine(b *buffer) []interface{} {
+func (e *textEngine) statusLine(b *buffer) []interface{} {
 	cs := b.cs
 	return []interface{}{cs.pos + 1, fmt.Sprintf("%q", b.text[cs.line]),
 		cs.lastCharPos() + 1, cs.maxLine() + 1}
 }
 
-func (eng *engine) insertChar(m mark, ch rune) {
+func (e *textEngine) insertChar(m mark, ch rune) {
 	b := m.buf
 	b.text[m.line] = append(b.text[m.line], 0)
 	copy(b.text[m.line][m.pos+1:], b.text[m.line][m.pos:])
 	b.text[m.line][m.pos] = ch
 }
 
-func (eng *engine) insertNewLineChar(m mark) {
+func (e *textEngine) insertNewLineChar(m mark) {
 	b := m.buf
-	eng.insertLineBelow(m)
+	e.insertLineBelow(m)
 	b.text[m.line+1] = append(line(nil), b.text[m.line][m.pos:]...)
 	b.text[m.line] = append(b.text[m.line][:m.pos], '\n')
 }
@@ -122,7 +95,7 @@ func newLine() line {
 	return ln
 }
 
-func (eng *engine) insertLineBelow(m mark) {
+func (e *textEngine) insertLineBelow(m mark) {
 	b := m.buf
 	b.text = append(b.text, nil)
 	m2 := mark{m.line + 1, 0, m.buf}
@@ -132,7 +105,7 @@ func (eng *engine) insertLineBelow(m mark) {
 
 // deleteCharBackward deletes the character before the mark and returns
 // the new postion of the mark to be used to move the cursor if needed
-func (eng *engine) deleteCharBackward(m mark) mark {
+func (e *textEngine) deleteCharBackward(m mark) mark {
 	b := m.buf
 	if m.atLineStart() {
 		if m.atFirstLine() {
@@ -140,7 +113,7 @@ func (eng *engine) deleteCharBackward(m mark) mark {
 		}
 		m.line -= 1
 		m.pos = m.lastCharPos() + 1
-		eng.joinLineBelow(m)
+		e.joinLineBelow(m)
 	} else {
 		m.pos -= 1
 		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)
@@ -150,33 +123,33 @@ func (eng *engine) deleteCharBackward(m mark) mark {
 
 // deleteCharForward deletes the character under the mark and returns
 // the new postion of the mark to be used to move the cursor if needed
-func (eng *engine) deleteCharForward(m mark) {
+func (e *textEngine) deleteCharForward(m mark) {
 	b := m.buf
 	if m.atLineEnd() {
 		if m.atLastLine() {
 			return
 		}
-		eng.joinLineBelow(m)
+		e.joinLineBelow(m)
 	} else {
 		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)
 	}
 }
 
-func (eng *engine) joinLineBelow(m mark) {
+func (e *textEngine) joinLineBelow(m mark) {
 	if m.atLastLine() {
 		return
 	}
 	m.buf.text[m.line] = append(m.buf.text[m.line][:m.lastCharPos()+1],
 		m.buf.text[m.line+1]...)
-	eng.deleteLine(mark{m.line + 1, 0, m.buf})
+	e.deleteLine(mark{m.line + 1, 0, m.buf})
 }
 
-func (eng *engine) deleteLine(m mark) {
+func (e *textEngine) deleteLine(m mark) {
 	b := m.buf
 	b.text = append(b.text[:m.line], b.text[m.line+1:]...)
 }
 
-func (eng *engine) deleteRegion(r region) mark {
+func (e *textEngine) deleteRegion(r region) mark {
 	var fr, to mark
 	switch {
 	case r.start.line < r.end.line:
@@ -195,7 +168,7 @@ func (eng *engine) deleteRegion(r region) mark {
 		// delete all lines between the two marks
 		m := mark{fr.line + 1, fr.pos, fr.buf}
 		for ; m.line < to.line; m.line++ {
-			eng.deleteLine(m)
+			e.deleteLine(m)
 		}
 		//delete required chars from fr and to lines
 		b.text[fr.line] = b.text[fr.line][:fr.pos]
@@ -205,5 +178,5 @@ func (eng *engine) deleteRegion(r region) mark {
 	return fr
 }
 
-func (eng *engine) DeleteCharForward() {
+func (e *textEngine) DeleteCharForward() {
 }

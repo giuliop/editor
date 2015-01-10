@@ -1,6 +1,8 @@
 package main
 
-import "os"
+import (
+	"os"
+)
 
 var (
 	eng        textEngine        // the buffer collection backend
@@ -25,7 +27,7 @@ func log(msg string) {
 
 func main() {
 	// initialize internal engine and create an empty buffer as current buffer
-	eng = initEngine()
+	eng := *initTextEngine()
 	b := eng.newBuffer("")
 
 	// init the command shortcut tables

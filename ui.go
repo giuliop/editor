@@ -45,6 +45,7 @@ const (
 	UIEventResize
 	UIEventMouse
 	UIEventError
+	UIEventTimeout
 )
 
 type UIModifier uint8

@@ -1,5 +1,10 @@
 package main
 
+import (
+	"strings"
+	"time"
+)
+
 func executeCommands(ui UI, cmds chan *cmdContext) {
 	for c := range cmds {
 		c.cmd(c)
@@ -18,7 +23,11 @@ func manageEventKey(ui UI, keyEvents chan UIEvent, commands chan *cmdContext) {
 		select {
 		case ev = <-reprocess:
 		default:
-			ev = <-keyEvents
+			select {
+			case ev = <-keyEvents:
+			case <-time.After(5 * time.Minute):
+				ev.Type = UIEventTimeout
+			}
 		}
 		// If nextPerser is nil we just completed a command and will look for
 		// the next command; if a special key was pressed we always treat it
@@ -35,86 +44,139 @@ func manageEventKey(ui UI, keyEvents chan UIEvent, commands chan *cmdContext) {
 	}
 }
 
-func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool) {
-	// ev == nil means we were called for a timeout
-	if ev == nil {
-		return parseAction, false
-	}
-	b := ev.Buf
-	mode := b.mod
-	var parser parseFunc
-	if ev.Special {
-		ctx.cmd = cmdKeys[mode][ev.Key].cmd
-		parser = cmdKeys[mode][ev.Key].parser
-		// else a char was pressed
-	} else {
-		switch mode {
-		case insertMode:
-			// we insert the char in insertMode
-			ctx.cmd = insertChar
-			// we look up the char command in normalMode
-		case normalMode:
-			if isNumber(ev.Char, ctx) && ctx.cmd == nil {
-				loadNumber(ev.Char, ctx)
-				return parseAction, false
+func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (
+	parser parseFunc, reprocess bool) {
+	// if called by a timeout execute a matched command or wait for more
+	switch {
+	case ev.Type == UIEventTimeout:
+		ctx.cmd = cmdCharsNormalMode[ctx.cmdString].cmd
+		parser = cmdCharsNormalMode[ctx.cmdString].parser
+	case ev.Special:
+		// special keys immediately match a command, no ambiguity possible
+		ctx.cmd = cmdKeys[ev.Buf.mod][ev.Key].cmd
+		parser = cmdKeys[ev.Buf.mod][ev.Key].parser
+	case ev.Buf.mod == insertMode:
+		ctx.cmd = insertChar
+	case ev.Buf.mod == normalMode:
+		if isNumber(ev.Char, ctx) && ctx.cmdString == "" {
+			loadNumber(ev.Char, ctx)
+			return parseAction, false
+		}
+		ctx.cmdString += string(ev.Char)
+		match, submatches := matchCommand(ctx.cmdString, ctx.customList,
+			cmdCharsNormalMode)
+		switch len(submatches) {
+		case 0:
+			return nil, false
+		case 1:
+			// if it is an exact match
+			if match != "" {
+				ctx.cmd = cmdCharsNormalMode[match].cmd
+				parser = cmdCharsNormalMode[match].parser
 			}
-			ctx.cmd = cmdCharsNormalMode[ev.Char].cmd
-			parser = cmdCharsNormalMode[ev.Char].parser
+		default:
+			ctx.customList = submatches
+			return parseAction, false
 		}
 	}
 	if ctx.cmd != nil {
-		ctx.point = &b.cs
-		ctx.char = ev.Char
 		if parser == nil {
 			cmds <- ctx
 		}
 	}
+	// we will pass the baton to a new parser, let's set up ctx
+	ctx.point = &ev.Buf.cs
+	ctx.char = ev.Char
+	ctx.customList = nil
 	return parser, false
 }
 
-func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool) {
-	// ev == nil means we were called for a timeout
-	// we'll use ctx.custom to build list of candiates
-	b := ev.Buf
-	if ev == nil {
-		if ctx.custom != "" {
-			ctx.point = &b.cs
-			ctx.reg = regionFuncs[ctx.custom]
-			cmds <- ctx
-			return nil, false
-		} else {
-			return parseRegion, false
+func matchCommand(s string, list []string, m map[string]command) (
+	match string, subMatches []string) {
+	// if list is nil it is the first iteraction and we need to build it
+	// from the map; s will be a single char
+	if list == nil {
+		for key := range m {
+			if key[0] == s[0] {
+				subMatches = append(subMatches, key)
+				// if exact match
+				if len(key) == 1 {
+					match = key
+				}
+			}
+		}
+		return
+	}
+	for _, str := range list {
+		if strings.HasPrefix(str, s) {
+			subMatches = append(subMatches, str)
+			if len(str) == len(s) {
+				match = s
+			}
 		}
 	}
-	if isNumber(ev.Char, ctx) && ctx.custom == "" {
+	return
+}
+
+func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool) {
+	// we'll use ctx.customList to save the submatches so far
+	switch {
+	// if we were called by a timeout...
+	case ev.Type == UIEventTimeout:
+		ctx.reg = regionFuncs[ctx.argString]
+		if ctx.reg != nil {
+			cmds <- ctx
+			return nil, false
+		}
+	// if we need to load a number...
+	case isNumber(ev.Char, ctx) && ctx.argString == "":
 		loadNumber(ev.Char, ctx)
-		return parseRegion, false
+	// otherwise we match the char
+	default:
+		ctx.argString += string(ev.Char)
+		match, subMatches := matchRegionFunc(ctx.argString, ctx.customList, regionFuncs)
+		switch len(subMatches) {
+		case 0:
+			return nil, false
+		case 1:
+			// if it is an exact match
+			if match != "" {
+				ctx.reg = regionFuncs[subMatches[0]]
+				cmds <- ctx
+				return nil, false
+			}
+		}
+		ctx.customList = subMatches
 	}
-	candidates := make([]string, 0, 20)
-	if ctx.custom == "" {
-		for key := range regionFuncs {
-			if rune(key[0]) == ev.Char {
-				candidates = append(candidates, key)
+	return parseRegion, false
+}
+
+// stringMatch takes a string s and list of strings and returns two values:
+// s (or "") if s has a perfect match in list (or not) and the sublist of
+// strings in list that have s as a prefix
+func matchRegionFunc(s string, list []string, m map[string]regionFunc) (
+	match string, subMatches []string) {
+	// if list is nil it is the first iteraction and we need to build it
+	// from the map; s will be a single char
+	if list == nil {
+		for key := range m {
+			if key[0] == s[0] {
+				list = append(list, key)
+				// if exact match
+				if len(key) == 1 {
+					match = key
+				}
 			}
 		}
 	} else {
-		sofar := ctx.custom + string(ev.Char)
-		for _, c := range ctx.customList {
-			if c[:len(sofar)] == sofar {
-				candidates = append(candidates, c)
+		for _, str := range list {
+			if strings.HasPrefix(str, s) {
+				subMatches = append(subMatches, str)
+				if len(str) == len(s) {
+					match = s
+				}
 			}
 		}
 	}
-	switch len(candidates) {
-	case 0:
-		return nil, false
-	case 1:
-		ctx.point = &b.cs
-		ctx.reg = regionFuncs[candidates[0]]
-		cmds <- ctx
-		return nil, false
-	default:
-		ctx.customList = candidates
-		return parseRegion, false
-	}
+	return
 }

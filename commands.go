@@ -11,11 +11,12 @@ package main
 // cmdContext is used to store all the info we need to process commands
 type cmdContext struct {
 	num        int        // times to execute the command
-	char       rune       // optional char object
 	cmd        cmdFunc    // the commnad to execute
-	reg        regionFunc // optional region object
 	point      *mark      // the cursor position
-	custom     string     // optional string object
+	char       rune       // the last input char
+	cmdString  string     // the input string defining the command
+	argString  string     // optional input string defining the command arg
+	reg        regionFunc // optional region object
 	customList []string   // optional string slice object
 }
 
@@ -39,15 +40,17 @@ var cmdKeysNormalMode = map[Key]command{
 	KeyEsc: command{exitProgram, nil},
 }
 
-var cmdCharsNormalMode = map[rune]command{
-	'i': command{insertAtCs, nil},
-	'a': command{appendAtCs, nil},
-	'h': command{moveCursorLeft, nil},
-	'j': command{moveCursorDown, nil},
-	'k': command{moveCursorUp, nil},
-	'l': command{moveCursorRight, nil},
-	'd': command{delete_, parseRegion},
-	'x': command{deleteCharForward, nil},
+var cmdCharsNormalMode = map[string]command{
+	"i": command{insertAtCs, nil},
+	"a": command{appendAtCs, nil},
+	"h": command{moveCursorLeft, nil},
+	"j": command{moveCursorDown, nil},
+	"k": command{moveCursorUp, nil},
+	"l": command{moveCursorRight, nil},
+	"d": command{delete_, parseRegion},
+	"x": command{deleteCharForward, nil},
+	"e": command{moveCursorTo, nil},
+	"E": command{moveCursorTo, nil},
 }
 
 var cmdKeysInsertMode = map[Key]command{
@@ -107,6 +110,18 @@ func moveCursorDown(ctx *cmdContext) {
 		ctx.num = 1
 	}
 	ctx.point.moveDown(ctx.num)
+}
+
+func moveCursorTo(ctx *cmdContext) {
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	ctx.reg = motions[ctx.cmdString]
+	for i := 0; i < ctx.num; i++ {
+		r := ctx.reg(*ctx.point)
+		*ctx.point = r.end
+	}
+	ctx.point.buf.cs = *ctx.point
 }
 
 func delete_(ctx *cmdContext) {
