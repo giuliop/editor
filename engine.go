@@ -33,6 +33,7 @@ const (
 	insertMode mode = iota
 	normalMode
 	commandMode
+	visualMode
 )
 
 // initTextEngine returns the textEngine editor after having initialized it

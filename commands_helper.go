@@ -11,7 +11,7 @@ import (
 // a number like 10 or 02)
 
 func isNumber(ch rune, ctx *cmdContext) bool {
-	if !unicode.IsDigit(ch) {
+	if !unicode.IsDigit(ch) || ctx.point.buf.mod != normalMode {
 		return false
 	}
 	if ch == '0' && ctx.num == 0 {

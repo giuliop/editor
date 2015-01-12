@@ -18,6 +18,7 @@ type cmdContext struct {
 	argString  string     // optional input string defining the command arg
 	reg        regionFunc // optional region object
 	customList []string   // optional string slice object
+	silent     bool       // if true does not redraw the screen after execution
 }
 
 type command struct {
@@ -27,22 +28,31 @@ type command struct {
 
 type cmdFunc func(ctx *cmdContext)
 
-type parseFunc func(ev *UIEvent, ctx *cmdContext, cmds chan *cmdContext) (parseFunc, bool)
+type parseFunc func(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (parseFunc, bool)
 
-var cmdKeys [2]map[Key]command
-
-func initCmdTables() {
-	cmdKeys[insertMode] = cmdKeysInsertMode
-	cmdKeys[normalMode] = cmdKeysNormalMode
+func lookupStringCmd(m mode, s string) command {
+	c := cmdStringTables[m][s]
+	//if m == insertMode && len(s) == 1 && c.cmd == nil {
+	//c = command{insertChar, nil}
+	//}
+	return c
 }
 
-var cmdKeysNormalMode = map[Key]command{
+func lookupKeyCmd(m mode, key Key) command {
+	return cmdKeyTables[m][key]
+}
+
+var cmdStringTables = [2]map[string]command{cmdStringInsertMode, cmdStringNormalMode}
+var cmdKeyTables = [2]map[Key]command{cmdKeyInsertMode, cmdKeyNormalMode}
+
+var cmdKeyNormalMode = map[Key]command{
 	KeyEsc: command{exitProgram, nil},
 }
 
-var cmdCharsNormalMode = map[string]command{
+var cmdStringNormalMode = map[string]command{
 	"i": command{insertAtCs, nil},
 	"a": command{appendAtCs, nil},
+	"A": command{appendAtEndOfLine, nil},
 	"h": command{moveCursorLeft, nil},
 	"j": command{moveCursorDown, nil},
 	"k": command{moveCursorUp, nil},
@@ -53,7 +63,7 @@ var cmdCharsNormalMode = map[string]command{
 	"E": command{moveCursorTo, nil},
 }
 
-var cmdKeysInsertMode = map[Key]command{
+var cmdKeyInsertMode = map[Key]command{
 	KeyEsc:        command{exitProgram, nil},
 	KeyBackspace:  command{deleteCharBackward, nil},
 	KeyBackspace2: command{deleteCharBackward, nil},
@@ -63,6 +73,10 @@ var cmdKeysInsertMode = map[Key]command{
 	KeyCtrlJ:      command{insertNewLine, nil},
 	KeyCtrlC:      command{toNormalMode, nil},
 	KeyDelete:     command{deleteCharForward, nil},
+}
+
+var cmdStringInsertMode = map[string]command{
+	"AA": command{appendAtEndOfLine, nil},
 }
 
 func toNormalMode(ctx *cmdContext) {
@@ -82,6 +96,12 @@ func appendAtCs(ctx *cmdContext) {
 	if !ctx.point.emptyLine() {
 		ctx.point.moveRight(1)
 	}
+}
+
+func appendAtEndOfLine(ctx *cmdContext) {
+	// move cursor right unless empty line
+	ctx.point.buf.mod = insertMode
+	ctx.point.pos = ctx.point.maxCursPos()
 }
 
 func moveCursorLeft(ctx *cmdContext) {

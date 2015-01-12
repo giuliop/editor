@@ -47,7 +47,6 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
-	//log(fmt.Sprintf("cursorPos : %v", eng.cursorPos(b)))
 	stringBeforeCs := string(eng.text(b)[eng.cursorLine(b)][:eng.cursorPos(b)])
 	t.setCursor(runewidth.StringWidth(stringBeforeCs), eng.cursorLine(b))
 	t.flush()
@@ -91,9 +90,7 @@ func (t *terminal) PollEvent() UIEvent {
 		t.curBuf,
 		UIEventType(ev.Type),
 		UIModifier(ev.Mod),
-		ev.Ch == 0,
-		Key(ev.Key),
-		ev.Ch,
+		Keypress{Key(ev.Key), ev.Ch, ev.Ch == 0},
 		ev.Width,
 		ev.Height,
 		ev.Err,
@@ -101,6 +98,7 @@ func (t *terminal) PollEvent() UIEvent {
 		ev.MouseY,
 	}
 }
+
 func (t *terminal) CurrentBuffer() *buffer {
 	return t.curBuf
 }

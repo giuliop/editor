@@ -30,9 +30,6 @@ func main() {
 	eng := *initTextEngine()
 	b := eng.newBuffer("")
 
-	// init the command shortcut tables
-	initCmdTables()
-
 	// initialize ui frontend
 	ui, err := selectUI("terminal")
 	check(err)
@@ -53,7 +50,7 @@ func main() {
 	go func() {
 		// activate key command manager
 		keyEvents := make(chan UIEvent, 100)
-		cmdToExecute := make(chan *cmdContext, 10)
+		cmdToExecute := make(chan cmdContext, 10)
 		go manageEventKey(ui, keyEvents, cmdToExecute)
 		go executeCommands(ui, cmdToExecute)
 		// listen for events and route them to appropriate channel

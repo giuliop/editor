@@ -63,7 +63,10 @@ func toWordEnd(m mark) region {
 			// initial position
 			if m2.line > m.line || m2.pos > m.pos+1 {
 				m2.moveLeft(1)
-				return region{m, m2}
+				if !(m2.pos == m.pos && m2.line == m.line) {
+					return region{m, m2}
+				}
+				m2.moveRight(1)
 			}
 			if unicode.IsSpace(c) {
 				m2.moveRight(1)
