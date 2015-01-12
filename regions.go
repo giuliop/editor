@@ -61,7 +61,7 @@ func toWordEnd(m mark) region {
 		case start != end || unicode.IsSpace(c):
 			// we go back to the end of the word, unless we would go back to the
 			// initial position
-			if m2.line > m.line || m2.pos > m.pos+1 {
+			if (m2.line > m.line && !m2.atLineStart()) || m2.pos > m.pos+1 {
 				m2.moveLeft(1)
 				if !(m2.pos == m.pos && m2.line == m.line) {
 					return region{m, m2}
@@ -79,17 +79,38 @@ func toWordEnd(m mark) region {
 func toWORDEnd(m mark) region {
 	m2 := m
 	for {
+		for ; m2.char() == ' '; m2.moveRight(1) {
+			if m2.atLastTextChar() {
+				return region{m, m2}
+			}
+		}
 		m2.moveRight(1)
-		switch {
-		case m2.atLastTextChar():
+		if m2.pos == m2.lastCharPos() {
 			return region{m, m2}
-		case m2.pos == m2.lastCharPos():
-			return region{m, m2}
-		case unicode.IsSpace(m2.char()):
+		}
+		if unicode.IsSpace(m2.char()) {
 			// we go back to the end of the word, unless we would go back to the
 			// initial position
-			if m2.line > m.line || m2.pos > m.pos+1 {
+			if (m2.line > m.line && !m2.atLineStart()) || m2.pos > m.pos+1 {
 				m2.moveLeft(1)
+				return region{m, m2}
+			}
+		}
+	}
+}
+
+func toWORDStart(m mark) region {
+	m2 := m
+	for {
+		m2.moveLeft(1)
+		switch {
+		case m2.atLineStart():
+			return region{m, m2}
+		case unicode.IsSpace(m2.char()):
+			// we go back to the start of the word, unless we would go back to the
+			// initial position
+			if m2.line < m.line || m2.pos < m.pos-1 {
+				m2.moveRight(1)
 				return region{m, m2}
 			}
 		}
