@@ -151,17 +151,7 @@ func (e *textEngine) deleteLine(m mark) {
 }
 
 func (e *textEngine) deleteRegion(r region) mark {
-	var fr, to mark
-	switch {
-	case r.start.line < r.end.line:
-		fr, to = r.start, r.end
-	case r.start.line > r.end.line:
-		to, fr = r.start, r.end
-	case r.start.pos < r.end.pos:
-		fr, to = r.start, r.end
-	default:
-		to, fr = r.start, r.end
-	}
+	var fr, to = orderMarks(r.start, r.end)
 	b := fr.buf
 	if fr.line == to.line {
 		b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[fr.line][to.pos+1:]...)

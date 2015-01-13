@@ -79,22 +79,22 @@ func toWordEnd(m mark) region {
 func toWORDEnd(m mark) region {
 	m2 := m
 	for {
-		for ; m2.char() == ' '; m2.moveRight(1) {
+		// if we are on a space we consume all consecutive spaces
+		for ; unicode.IsSpace(m2.char()); m2.moveRight(1) {
 			if m2.atLastTextChar() {
 				return region{m, m2}
 			}
 		}
 		m2.moveRight(1)
-		if m2.pos == m2.lastCharPos() {
+		// if we reach end of line and it's not a space we can return
+		if m2.pos == m2.lastCharPos() && !unicode.IsSpace(m2.char()) {
 			return region{m, m2}
 		}
-		if unicode.IsSpace(m2.char()) {
-			// we go back to the end of the word, unless we would go back to the
-			// initial position
-			if (m2.line > m.line && !m2.atLineStart()) || m2.pos > m.pos+1 {
-				m2.moveLeft(1)
-				return region{m, m2}
-			}
+		// if we reach a space we move back the cursor and return
+		// (unless we would go back to the initial mark)
+		if unicode.IsSpace(m2.char()) && m.deltaChars(m2) > 1 {
+			m2.moveLeft(1)
+			return region{m, m2}
 		}
 	}
 }

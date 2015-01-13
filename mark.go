@@ -134,3 +134,38 @@ func (m *mark) hide() {
 func (m *mark) char() rune {
 	return m.buf.text[m.line][m.pos]
 }
+
+// orderMarks takes two marks (assumed in same buffer) and returns the two marks
+// in order, that is the mark earlier in the text is returned first
+func orderMarks(m1, m2 mark) (mark, mark) {
+	switch {
+	case m1.line < m2.line:
+		return m1, m2
+	case m1.line > m2.line:
+		return m2, m1
+	case m1.pos < m2.pos:
+		return m1, m2
+	default:
+		return m2, m1
+	}
+}
+
+// deltaChars returns the distance in number of  chars (including newlines)
+// between m and m2; the value is negative if m2 is before m and 0 if they overlap
+// the function assume the marks are on the same buffer
+func (m *mark) deltaChars(m2 mark) (delta int) {
+	t := m.buf.text
+	fr, to := orderMarks(*m, m2)
+	if fr.line == to.line {
+		delta = len(t[fr.line][fr.pos:to.pos])
+	} else {
+		delta = len(t[fr.line][fr.pos:]) + len(t[to.line][:to.pos])
+		for fr.line++; fr.line < to.line; fr.line++ {
+			delta += len(t[fr.line])
+		}
+	}
+	if fr.line == m2.line && fr.pos == m2.pos {
+		delta *= -1
+	}
+	return delta
+}
