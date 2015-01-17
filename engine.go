@@ -122,8 +122,7 @@ func (e *textEngine) deleteCharBackward(m mark) mark {
 	return m
 }
 
-// deleteCharForward deletes the character under the mark and returns
-// the new postion of the mark to be used to move the cursor if needed
+// deleteCharForward deletes the character under the mark
 func (e *textEngine) deleteCharForward(m mark) {
 	b := m.buf
 	if m.atLineEnd() {
@@ -169,5 +168,14 @@ func (e *textEngine) deleteRegion(r region) mark {
 	return fr
 }
 
-func (e *textEngine) DeleteCharForward() {
+func (e *textEngine) lastTextCharPos(m mark) mark {
+	m2 := mark{m.maxLine(), 0, m.buf}
+	m2.pos = m2.lastCharPos()
+	m2.fixPos()
+	return m2
+}
+
+func (e *textEngine) firstTextCharPos(m mark) mark {
+	m2 := mark{0, 0, m.buf}
+	return m2
 }

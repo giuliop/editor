@@ -73,8 +73,8 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			c = lookupKeyCmd(ev.Buf.mod, ev.Key.Special)
 		}
 		return pushCmd(c, *ctx, cmds), reprocessEvent
-	case isNumber(ctx.char, ctx) && ctx.cmdString == "":
-		loadNumber(ctx.char, ctx)
+	case isNumber(ev.Key.Char, ctx) && ctx.cmdString == "":
+		loadNumber(ev.Key.Char, ctx)
 		return parseAction, false
 	default:
 		m := ev.Buf.mod

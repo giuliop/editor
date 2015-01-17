@@ -46,25 +46,28 @@ var cmdStringTables = [2]map[string]command{cmdStringInsertMode, cmdStringNormal
 var cmdKeyTables = [2]map[Key]command{cmdKeyInsertMode, cmdKeyNormalMode}
 
 var cmdKeyNormalMode = map[Key]command{
-	KeyEsc: command{exitProgram, nil},
+//KeyEsc:        command{exitProgram, nil},
 }
 
 var cmdStringNormalMode = map[string]command{
-	"i": command{insertAtCs, nil},
-	"a": command{appendAtCs, nil},
-	"A": command{appendAtEndOfLine, nil},
-	"h": command{moveCursorLeft, nil},
-	"j": command{moveCursorDown, nil},
-	"k": command{moveCursorUp, nil},
-	"l": command{moveCursorRight, nil},
-	"d": command{delete_, parseRegion},
-	"x": command{deleteCharForward, nil},
-	"e": command{moveCursorTo, nil},
-	"E": command{moveCursorTo, nil},
+	",q": command{exitProgram, nil},
+	"i":  command{insertAtCs, nil},
+	"a":  command{appendAtCs, nil},
+	"A":  command{appendAtEndOfLine, nil},
+	"h":  command{moveCursorLeft, nil},
+	"j":  command{moveCursorDown, nil},
+	"k":  command{moveCursorUp, nil},
+	"l":  command{moveCursorRight, nil},
+	"d":  command{delete_, parseRegion},
+	"x":  command{deleteCharForward, nil},
+	"e":  command{moveCursorTo, nil},
+	"E":  command{moveCursorTo, nil},
+	"B":  command{moveCursorTo, nil},
+	"b":  command{moveCursorTo, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{
-	KeyEsc:        command{exitProgram, nil},
+	KeyEsc:        command{toNormalMode, nil},
 	KeyBackspace:  command{deleteCharBackward, nil},
 	KeyBackspace2: command{deleteCharBackward, nil},
 	KeyTab:        command{insertTab, nil},
@@ -133,10 +136,10 @@ func moveCursorDown(ctx *cmdContext) {
 }
 
 func moveCursorTo(ctx *cmdContext) {
+	ctx.reg = motions[ctx.cmdString]
 	if ctx.num == 0 {
 		ctx.num = 1
 	}
-	ctx.reg = motions[ctx.cmdString]
 	for i := 0; i < ctx.num; i++ {
 		r := ctx.reg(*ctx.point)
 		*ctx.point = r.end
@@ -157,6 +160,16 @@ func delete_(ctx *cmdContext) {
 
 func exitProgram(ctx *cmdContext) {
 	exitSignal <- true
+}
+
+func deleteCharForward(ctx *cmdContext) {
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	for i := 0; i < ctx.num; i++ {
+		eng.deleteCharForward(*ctx.point)
+		ctx.point.fixPos()
+	}
 }
 
 func deleteCharBackward(ctx *cmdContext) {
@@ -181,9 +194,4 @@ func insertNewLine(ctx *cmdContext) {
 func insertChar(ctx *cmdContext) {
 	eng.insertChar(*ctx.point, ctx.char)
 	ctx.point.moveRight(1)
-}
-
-func deleteCharForward(ctx *cmdContext) {
-	eng.deleteCharForward(*ctx.point)
-	ctx.point.fixPos()
 }

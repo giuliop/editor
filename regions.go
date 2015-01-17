@@ -1,6 +1,9 @@
 package main
 
-import "unicode"
+import (
+	"regexp"
+	"unicode"
+)
 
 type region struct {
 	start mark
@@ -17,8 +20,8 @@ var motions = map[string]regionFunc{
 	"E": toWORDEnd,
 	//"w":  toNextWordStart,
 	//"W":  toNextWORDStart,
-	//"b":  toWordStart,
-	//"B":  toWORDStart,
+	"b": toWordStart,
+	"B": toWORDStart,
 	//"0":  toFirstCharInLine,
 	//"gh": toFirstCharInLine,
 	//"$":  toLastCharInLine,
@@ -30,12 +33,33 @@ var regionFuncs = map[string]regionFunc{
 //"aw": aword,
 }
 
+/*
+ *var (
+ *    WORDEnd = regexp.MustCompile(`[\P{Zs}][\p{Zs}\n]`)
+ *    // a non-space, non-newline preceded by either a space or start of text
+ *    WORDStart       = regexp.MustCompile(`(?:\A|\p{Zs})([^\p{Zs}\n])`)
+ *    wordEnd         *regexp.Regexp
+ *    symbolWordEnd   *regexp.Regexp
+ *    wordStart       *regexp.Regexp
+ *    symbolWordStart *regexp.Regexp
+ *)
+ */
+
 // we add all motiond to RegionFuncs since all motions are regionFuncs but not
-// vicecersa
+
+// vicecersa; we also compile motion regexp
 func init() {
 	for k, f := range motions {
 		regionFuncs[k] = f
 	}
+	s := ``
+	for r := range specialWordChars {
+		s += string(r)
+	}
+	//wordEnd = regexp.MustCompile(`[\pL\d` + s + `][^\pL\d` + s + `]`)
+	//symbolWordEnd = regexp.MustCompile(`[^\pL\d\n\p{Zs}` + s + `][\pL\d\n\p{Zs}` + s + `]`)
+	//wordStart = regexp.MustCompile(`(?:\A|[^\pL\d` + s + `])([\pL\d` + s + `])`)
+	//symbolWordStart = regexp.MustCompile(`(?:\A|[\pL\d\p{Zs}` + s + `])([^\pL\d\p{Zs}` + s + `])`)
 }
 
 var specialWordChars = map[rune]bool{
@@ -46,73 +70,98 @@ func isWordChar(c rune) bool {
 	return unicode.IsLetter(c) || unicode.IsNumber(c) || specialWordChars[c]
 }
 
-func toWordEnd(m mark) region {
-	m2 := m
-	start := isWordChar(m2.char())
-	for {
-		m2.moveRight(1)
-		c := m2.char()
-		end := isWordChar(c)
-		switch {
-		case m2.atLastTextChar():
-			return region{m, m2}
-		case m2.pos == m2.lastCharPos():
-			return region{m, m2}
-		case start != end || unicode.IsSpace(c):
-			// we go back to the end of the word, unless we would go back to the
-			// initial position
-			if (m2.line > m.line && !m2.atLineStart()) || m2.pos > m.pos+1 {
-				m2.moveLeft(1)
-				if !(m2.pos == m.pos && m2.line == m.line) {
-					return region{m, m2}
-				}
-				m2.moveRight(1)
-			}
-			if unicode.IsSpace(c) {
-				m2.moveRight(1)
-			}
-			start = isWordChar(m2.char())
-		}
-	}
+func isSymbolWordChar(c rune) bool {
+	return !(unicode.IsSpace(c) || c == '\n' || isWordChar(c))
 }
 
 func toWORDEnd(m mark) region {
 	m2 := m
-	for {
-		// if we are on a space we consume all consecutive spaces
-		for ; unicode.IsSpace(m2.char()); m2.moveRight(1) {
-			if m2.atLastTextChar() {
-				return region{m, m2}
-			}
-		}
-		m2.moveRight(1)
-		// if we reach end of line and it's not a space we can return
-		if m2.pos == m2.lastCharPos() && !unicode.IsSpace(m2.char()) {
-			return region{m, m2}
-		}
-		// if we reach a space we move back the cursor and return
-		// (unless we would go back to the initial mark)
-		if unicode.IsSpace(m2.char()) && m.deltaChars(m2) > 1 {
-			m2.moveLeft(1)
-			return region{m, m2}
-		}
+	m2.moveRight(1)
+	for ; !m2.atEndOfWORD(); m2.moveRight(1) {
 	}
+	return region{m, m2}
+}
+
+func toWordEnd(m mark) region {
+	m2 := m
+	m2.moveRight(1)
+	for ; !m2.atEndOfWord(); m2.moveRight(1) {
+	}
+	return region{m, m2}
 }
 
 func toWORDStart(m mark) region {
 	m2 := m
-	for {
-		m2.moveLeft(1)
-		switch {
-		case m2.atLineStart():
-			return region{m, m2}
-		case unicode.IsSpace(m2.char()):
-			// we go back to the start of the word, unless we would go back to the
-			// initial position
-			if m2.line < m.line || m2.pos < m.pos-1 {
-				m2.moveRight(1)
-				return region{m, m2}
-			}
+	m2.moveLeft(1)
+	for ; !m2.atStartOfWORD(); m2.moveLeft(1) {
+	}
+	return region{m, m2}
+}
+
+func toWordStart(m mark) region {
+	m2 := m
+	m2.moveLeft(1)
+	for ; !m2.atStartOfWord(); m2.moveLeft(1) {
+	}
+	return region{m, m2}
+}
+
+// a non-space followed by either a space or newline
+func (m *mark) atEndOfWORD() bool {
+	c, n := m.char(), m.nextChar()
+	return m.atLastTextChar() ||
+		(!unicode.IsSpace(c) && (unicode.IsSpace(n) || n == '\n'))
+}
+
+// a non-space preceded by either a space or newline
+func (m *mark) atStartOfWORD() bool {
+	c, p := m.char(), m.prevChar()
+	return m.atStartOfText() ||
+		(!unicode.IsSpace(c) && (unicode.IsSpace(p) || c == 0))
+}
+
+// (symbol) word char followed by a non (symbol) word char
+func (m *mark) atEndOfWord() bool {
+	c, n := m.char(), m.nextChar()
+	return m.atLastTextChar() ||
+		(isWordChar(c) && !isWordChar(n)) ||
+		(isSymbolWordChar(c) && !isSymbolWordChar(n))
+}
+
+// (symbol) word char precede by a non (symbol) word char
+func (m *mark) atStartOfWord() bool {
+	c, p := m.char(), m.prevChar()
+	return m.atStartOfText() ||
+		(isWordChar(c) && !isWordChar(p)) ||
+		(isSymbolWordChar(c) && !isSymbolWordChar(p))
+}
+
+func findRight(m mark, r *regexp.Regexp) mark {
+	text := m.buf.text
+	offset := m.pos + 1
+	for ln := m.line; ln <= m.maxLine(); ln++ {
+		s := string(text[ln][offset:])
+		pos := r.FindStringIndex(s)
+		if pos != nil {
+			return mark{ln, pos[0] + offset, m.buf}
+		}
+		offset = 0
+	}
+	return eng.lastTextCharPos(m)
+}
+
+func findLeft(m mark, r *regexp.Regexp) mark {
+	text := m.buf.text
+	for ln := m.line; ln >= 0; ln-- {
+		s := string(text[ln])
+		if ln == m.line {
+			s = s[:m.pos]
+		}
+		matches := r.FindAllStringSubmatchIndex(s, -1)
+		if matches != nil {
+			pos := matches[len(matches)-1]
+			return mark{ln, pos[2], m.buf}
 		}
 	}
+	return eng.firstTextCharPos(m)
 }

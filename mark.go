@@ -27,12 +27,16 @@ func (m *mark) atLineEnd() bool {
 	return m.pos == len(m.buf.text[m.line])-1
 }
 
+func (m *mark) atStartOfText() bool {
+	return m.line == 0 && m.pos == 0
+}
+
 func (m *mark) atEndOfText() bool {
 	return m.atLastLine() && m.atLineEnd()
 }
 
 func (m *mark) atLastTextChar() bool {
-	return m.atLastLine() && m.pos == m.lastCharPos()
+	return m.atLastLine() && (m.pos == m.lastCharPos() || m.atLineEnd())
 }
 
 // lastCharPos return the position of the last char in the line before the newline
@@ -43,7 +47,7 @@ func (m *mark) lastCharPos() int {
 
 func (m *mark) maxCursPos() int {
 	max := m.lastCharPos() + 1
-	// in normal mode we want the cursor one position to the left, unless it is an empty line
+	// in normal mode we want the cursor one position to the left, unless it is an emptypreve
 	if m.buf.mod == normalMode && max > 0 {
 		max -= 1
 	}
@@ -133,6 +137,20 @@ func (m *mark) hide() {
 
 func (m *mark) char() rune {
 	return m.buf.text[m.line][m.pos]
+}
+
+func (m *mark) prevChar() rune {
+	if m.atLineStart() {
+		return 0
+	}
+	return m.buf.text[m.line][m.pos-1]
+}
+
+func (m *mark) nextChar() rune {
+	if m.atLineEnd() {
+		return 0
+	}
+	return m.buf.text[m.line][m.pos+1]
 }
 
 // orderMarks takes two marks (assumed in same buffer) and returns the two marks

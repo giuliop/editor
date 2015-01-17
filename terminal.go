@@ -25,7 +25,8 @@ func (t *terminal) Close() {
 }
 
 func (t *terminal) Draw() {
-	_debug := true
+	var _debug bool
+	//_debug = true
 	t.clear()
 	// viPos tracks the visual position of chars in the line since some chars
 	// might take two spaces on screen
