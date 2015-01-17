@@ -1,12 +1,13 @@
 package main
 
-//type direction int
-//const (
-//right direction = iota
-//left
-//up
-//down
-//)
+type direction int
+
+const (
+	right direction = iota
+	left
+	up
+	down
+)
 
 // cmdContext is used to store all the info we need to process commands
 type cmdContext struct {
@@ -64,6 +65,8 @@ var cmdStringNormalMode = map[string]command{
 	"E":  command{moveCursorTo, nil},
 	"B":  command{moveCursorTo, nil},
 	"b":  command{moveCursorTo, nil},
+	"w":  command{moveCursorTo, nil},
+	"W":  command{moveCursorTo, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{

@@ -18,8 +18,8 @@ type regionFunc func(m mark) region
 var motions = map[string]regionFunc{
 	"e": toWordEnd,
 	"E": toWORDEnd,
-	//"w":  toNextWordStart,
-	//"W":  toNextWORDStart,
+	//"w": toNextWordStart,
+	//"W": toNextWORDStart,
 	"b": toWordStart,
 	"B": toWORDStart,
 	//"0":  toFirstCharInLine,
@@ -74,36 +74,28 @@ func isSymbolWordChar(c rune) bool {
 	return !(unicode.IsSpace(c) || c == '\n' || isWordChar(c))
 }
 
-func toWORDEnd(m mark) region {
-	m2 := m
-	m2.moveRight(1)
-	for ; !m2.atEndOfWORD(); m2.moveRight(1) {
+func doMotion(m *mark, atMotion func() bool, moveMark func(n int)) region {
+	m2 := *m
+	moveMark(1)
+	for ; !atMotion(); moveMark(1) {
 	}
-	return region{m, m2}
+	return region{m2, *m}
+}
+
+func toWORDEnd(m mark) region {
+	return doMotion(&m, m.atEndOfWORD, m.moveRight)
 }
 
 func toWordEnd(m mark) region {
-	m2 := m
-	m2.moveRight(1)
-	for ; !m2.atEndOfWord(); m2.moveRight(1) {
-	}
-	return region{m, m2}
+	return doMotion(&m, m.atEndOfWord, m.moveRight)
 }
 
 func toWORDStart(m mark) region {
-	m2 := m
-	m2.moveLeft(1)
-	for ; !m2.atStartOfWORD(); m2.moveLeft(1) {
-	}
-	return region{m, m2}
+	return doMotion(&m, m.atStartOfWORD, m.moveLeft)
 }
 
 func toWordStart(m mark) region {
-	m2 := m
-	m2.moveLeft(1)
-	for ; !m2.atStartOfWord(); m2.moveLeft(1) {
-	}
-	return region{m, m2}
+	return doMotion(&m, m.atStartOfWord, m.moveLeft)
 }
 
 // a non-space followed by either a space or newline
