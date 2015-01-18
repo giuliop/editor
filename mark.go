@@ -14,8 +14,8 @@ func (m *mark) atFirstLine() bool {
 	return m.line == 0
 }
 
-func (m *mark) atLastLine() bool {
-	return m.line == m.maxLine()
+func (m *mark) atlastLine() bool {
+	return m.line == m.lastLine()
 }
 
 func (m *mark) atLineStart() bool {
@@ -32,11 +32,11 @@ func (m *mark) atStartOfText() bool {
 }
 
 func (m *mark) atEndOfText() bool {
-	return m.atLastLine() && m.atLineEnd()
+	return m.atlastLine() && m.atLineEnd()
 }
 
 func (m *mark) atLastTextChar() bool {
-	return m.atLastLine() && (m.pos == m.lastCharPos() || m.atLineEnd())
+	return m.atlastLine() && (m.pos == m.lastCharPos() || m.atLineEnd())
 }
 
 // lastCharPos return the position of the last char in the line before the newline
@@ -58,7 +58,7 @@ func (m *mark) emptyLine() bool {
 	return m.lastCharPos() == -1
 }
 
-func (m *mark) maxLine() int {
+func (m *mark) lastLine() int {
 	return len(m.buf.text) - 1
 }
 
@@ -84,14 +84,14 @@ func (m *mark) moveUp(steps int) {
 
 func (m *mark) moveDown(steps int) {
 	m.line += steps
-	if m.line > m.maxLine() {
-		m.line = m.maxLine()
+	if m.line > m.lastLine() {
+		m.line = m.lastLine()
 	}
 	m.fixPos()
 }
 
 func (m *mark) moveRight(steps int) {
-	maxY := m.maxLine()
+	maxY := m.lastLine()
 	for steps > 0 {
 		maxX := m.maxCursPos()
 		if maxX >= m.pos+steps {

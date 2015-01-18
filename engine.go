@@ -71,7 +71,7 @@ func (e *textEngine) cursorPos(b *buffer) int {
 func (e *textEngine) statusLine(b *buffer) []interface{} {
 	cs := b.cs
 	return []interface{}{cs.pos + 1, fmt.Sprintf("%q", b.text[cs.line]),
-		cs.lastCharPos() + 1, cs.maxLine() + 1}
+		cs.lastCharPos() + 1, cs.lastLine() + 1}
 }
 
 func (e *textEngine) insertChar(m mark, ch rune) {
@@ -126,7 +126,7 @@ func (e *textEngine) deleteCharBackward(m mark) mark {
 func (e *textEngine) deleteCharForward(m mark) {
 	b := m.buf
 	if m.atLineEnd() {
-		if m.atLastLine() {
+		if m.atlastLine() {
 			return
 		}
 		e.joinLineBelow(m)
@@ -136,7 +136,7 @@ func (e *textEngine) deleteCharForward(m mark) {
 }
 
 func (e *textEngine) joinLineBelow(m mark) {
-	if m.atLastLine() {
+	if m.atlastLine() {
 		return
 	}
 	m.buf.text[m.line] = append(m.buf.text[m.line][:m.lastCharPos()+1],
@@ -169,7 +169,7 @@ func (e *textEngine) deleteRegion(r region) mark {
 }
 
 func (e *textEngine) lastTextCharPos(m mark) mark {
-	m2 := mark{m.maxLine(), 0, m.buf}
+	m2 := mark{m.lastLine(), 0, m.buf}
 	m2.pos = m2.lastCharPos()
 	m2.fixPos()
 	return m2

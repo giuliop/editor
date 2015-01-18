@@ -16,16 +16,18 @@ type region struct {
 type regionFunc func(m mark) region
 
 var motions = map[string]regionFunc{
-	"e": toWordEnd,
-	"E": toWORDEnd,
-	"w": toNextWordStart,
-	"W": toNextWORDStart,
-	"b": toWordStart,
-	"B": toWORDStart,
-	"$": toLineEnd,
-	//"gh": toFirstCharInLine,
-	"0": toLineStart,
-	//"gl": toLastCharInLine,
+	"e":  toWordEnd,
+	"E":  toWORDEnd,
+	"w":  toNextWordStart,
+	"W":  toNextWORDStart,
+	"b":  toWordStart,
+	"B":  toWORDStart,
+	"$":  toLineEnd,
+	"L":  toLineEnd,
+	"0":  toLineStart,
+	"H":  toLineStart,
+	"gg": toTextStart,
+	"G":  toLastTextChar,
 }
 
 var regionFuncs = map[string]regionFunc{
@@ -92,6 +94,17 @@ func toLineStart(m mark) region {
 	return region{m, m2}
 }
 
+func toLastTextChar(m mark) region {
+	m2 := mark{m.lastLine(), m.lastCharPos(), m.buf}
+	m2.fixPos()
+	return region{m, m2}
+}
+
+func toTextStart(m mark) region {
+	m2 := mark{0, 0, m.buf}
+	return region{m, m2}
+}
+
 func toWORDEnd(m mark) region {
 	return doMotion(&m, m.atEndOfWORD, m.moveRight)
 }
@@ -148,7 +161,7 @@ func (m *mark) atStartOfWord() bool {
 func findRight(m mark, r *regexp.Regexp) mark {
 	text := m.buf.text
 	offset := m.pos + 1
-	for ln := m.line; ln <= m.maxLine(); ln++ {
+	for ln := m.line; ln <= m.lastLine(); ln++ {
 		s := string(text[ln][offset:])
 		pos := r.FindStringIndex(s)
 		if pos != nil {
