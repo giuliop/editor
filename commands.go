@@ -51,28 +51,30 @@ var cmdKeyNormalMode = map[Key]command{
 }
 
 var cmdStringNormalMode = map[string]command{
-	",q": command{exitProgram, nil},
-	"i":  command{insertAtCs, nil},
-	"a":  command{appendAtCs, nil},
-	"A":  command{appendAtEndOfLine, nil},
-	"h":  command{moveCursorLeft, nil},
-	"j":  command{moveCursorDown, nil},
-	"k":  command{moveCursorUp, nil},
-	"l":  command{moveCursorRight, nil},
-	"d":  command{delete_, parseRegion},
-	"x":  command{deleteCharForward, nil},
-	"e":  command{moveCursorTo, nil},
-	"E":  command{moveCursorTo, nil},
-	"B":  command{moveCursorTo, nil},
-	"b":  command{moveCursorTo, nil},
-	"w":  command{moveCursorTo, nil},
-	"W":  command{moveCursorTo, nil},
-	"0":  command{moveCursorTo, nil},
-	"$":  command{moveCursorTo, nil},
-	"H":  command{moveCursorTo, nil},
-	"L":  command{moveCursorTo, nil},
-	"gg": command{moveCursorTo, nil},
-	"G":  command{moveCursorTo, nil},
+	",q":  command{exitProgram, nil},
+	"i":   command{insertAtCs, nil},
+	"a":   command{appendAtCs, nil},
+	"A":   command{appendAtEndOfLine, nil},
+	"h":   command{moveCursorLeft, nil},
+	"j":   command{moveCursorDown, nil},
+	"k":   command{moveCursorUp, nil},
+	"l":   command{moveCursorRight, nil},
+	"d":   command{delete_, parseRegion},
+	"x":   command{deleteCharForward, nil},
+	"e":   command{moveCursorTo, nil},
+	"E":   command{moveCursorTo, nil},
+	"B":   command{moveCursorTo, nil},
+	"b":   command{moveCursorTo, nil},
+	"w":   command{moveCursorTo, nil},
+	"W":   command{moveCursorTo, nil},
+	"0":   command{moveCursorTo, nil},
+	"$":   command{moveCursorTo, nil},
+	"H":   command{moveCursorTo, nil},
+	"L":   command{moveCursorTo, nil},
+	"gg":  command{moveCursorTo, nil},
+	"G":   command{moveCursorTo, nil},
+	"dgg": command{deleteToStart, nil},
+	"dG":  command{deleteToEnd, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{
@@ -165,6 +167,21 @@ func delete_(ctx *cmdContext) {
 		*ctx.point = eng.deleteRegion(r)
 	}
 	ctx.point.buf.cs = *ctx.point
+}
+
+func deleteToStart(ctx *cmdContext) {
+	b := ctx.point.buf
+	eng.deleteLines(mark{0, 0, b}, *ctx.point)
+	b.cs = mark{0, 0, b}
+}
+
+func deleteToEnd(ctx *cmdContext) {
+	b := ctx.point.buf
+	eng.deleteLines(*ctx.point, mark{ctx.point.lastLine(), 0, b})
+	b.cs = mark{ctx.point.line - 1, 0, b}
+	if b.cs.line < 0 {
+		b.cs.line = 0
+	}
 }
 
 func exitProgram(ctx *cmdContext) {
