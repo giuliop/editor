@@ -67,6 +67,8 @@ var cmdStringNormalMode = map[string]command{
 	"b":  command{moveCursorTo, nil},
 	"w":  command{moveCursorTo, nil},
 	"W":  command{moveCursorTo, nil},
+	"0":  command{moveCursorTo, nil},
+	"$":  command{moveCursorTo, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{

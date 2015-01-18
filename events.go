@@ -83,6 +83,7 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		c, submatches := matchCommand(ev.Buf.mod, ctx.cmdString, ctx.customList)
 		ctx.customList = submatches
 		if m == insertMode {
+			// we insert the char and just delete it later if we match a command
 			pushCmd(command{insertChar, nil}, *ctx, cmds)
 		}
 		switch {
