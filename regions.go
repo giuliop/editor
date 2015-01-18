@@ -43,6 +43,14 @@ var regionFuncs = map[string]regionFunc{
  *    wordStart       *regexp.Regexp
  *    symbolWordStart *regexp.Regexp
  *)
+ *s := ``
+ *for r := range specialWordChars {
+ *    s += string(r)
+ *}
+ *wordEnd = regexp.MustCompile(`[\pL\d` + s + `][^\pL\d` + s + `]`)
+ *symbolWordEnd = regexp.MustCompile(`[^\pL\d\n\p{Zs}` + s + `][\pL\d\n\p{Zs}` + s + `]`)
+ *wordStart = regexp.MustCompile(`(?:\A|[^\pL\d` + s + `])([\pL\d` + s + `])`)
+ *symbolWordStart = regexp.MustCompile(`(?:\A|[\pL\d\p{Zs}` + s + `])([^\pL\d\p{Zs}` + s + `])`)
  */
 
 // we add all motiond to RegionFuncs since all motions are regionFuncs but not
@@ -52,14 +60,6 @@ func init() {
 	for k, f := range motions {
 		regionFuncs[k] = f
 	}
-	s := ``
-	for r := range specialWordChars {
-		s += string(r)
-	}
-	//wordEnd = regexp.MustCompile(`[\pL\d` + s + `][^\pL\d` + s + `]`)
-	//symbolWordEnd = regexp.MustCompile(`[^\pL\d\n\p{Zs}` + s + `][\pL\d\n\p{Zs}` + s + `]`)
-	//wordStart = regexp.MustCompile(`(?:\A|[^\pL\d` + s + `])([\pL\d` + s + `])`)
-	//symbolWordStart = regexp.MustCompile(`(?:\A|[\pL\d\p{Zs}` + s + `])([^\pL\d\p{Zs}` + s + `])`)
 }
 
 var specialWordChars = map[rune]bool{
