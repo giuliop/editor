@@ -16,16 +16,18 @@ type region struct {
 type regionFunc func(m mark) region
 
 var motions = map[string]regionFunc{
-	"e": toWordEnd,
-	"E": toWORDEnd,
-	//"w":  toNextWordStart,
-	//"W":  toNextWORDStart,
-	"b": toWordStart,
-	"B": toWORDStart,
-	//"0":  toFirstCharInLine,
-	//"gh": toFirstCharInLine,
-	//"$":  toLastCharInLine,
-	//"gl": toLastCharInLine,
+	"e":  toWordEnd,
+	"E":  toWORDEnd,
+	"w":  toNextWordStart,
+	"W":  toNextWORDStart,
+	"b":  toWordStart,
+	"B":  toWORDStart,
+	"$":  toLineEnd,
+	"L":  toLineEnd,
+	"0":  toLineStart,
+	"H":  toLineStart,
+	"gg": toTextStart,
+	"G":  toLastTextChar,
 }
 
 var regionFuncs = map[string]regionFunc{
@@ -43,6 +45,14 @@ var regionFuncs = map[string]regionFunc{
  *    wordStart       *regexp.Regexp
  *    symbolWordStart *regexp.Regexp
  *)
+ *s := ``
+ *for r := range specialWordChars {
+ *    s += string(r)
+ *}
+ *wordEnd = regexp.MustCompile(`[\pL\d` + s + `][^\pL\d` + s + `]`)
+ *symbolWordEnd = regexp.MustCompile(`[^\pL\d\n\p{Zs}` + s + `][\pL\d\n\p{Zs}` + s + `]`)
+ *wordStart = regexp.MustCompile(`(?:\A|[^\pL\d` + s + `])([\pL\d` + s + `])`)
+ *symbolWordStart = regexp.MustCompile(`(?:\A|[\pL\d\p{Zs}` + s + `])([^\pL\d\p{Zs}` + s + `])`)
  */
 
 // we add all motiond to RegionFuncs since all motions are regionFuncs but not
@@ -52,14 +62,6 @@ func init() {
 	for k, f := range motions {
 		regionFuncs[k] = f
 	}
-	s := ``
-	for r := range specialWordChars {
-		s += string(r)
-	}
-	//wordEnd = regexp.MustCompile(`[\pL\d` + s + `][^\pL\d` + s + `]`)
-	//symbolWordEnd = regexp.MustCompile(`[^\pL\d\n\p{Zs}` + s + `][\pL\d\n\p{Zs}` + s + `]`)
-	//wordStart = regexp.MustCompile(`(?:\A|[^\pL\d` + s + `])([\pL\d` + s + `])`)
-	//symbolWordStart = regexp.MustCompile(`(?:\A|[\pL\d\p{Zs}` + s + `])([^\pL\d\p{Zs}` + s + `])`)
 }
 
 var specialWordChars = map[rune]bool{
@@ -74,36 +76,56 @@ func isSymbolWordChar(c rune) bool {
 	return !(unicode.IsSpace(c) || c == '\n' || isWordChar(c))
 }
 
-func toWORDEnd(m mark) region {
-	m2 := m
-	m2.moveRight(1)
-	for ; !m2.atEndOfWORD(); m2.moveRight(1) {
+func doMotion(m *mark, atMotion func() bool, moveMark func(n int)) region {
+	m2 := *m
+	moveMark(1)
+	for ; !(atMotion() || m.atLastTextChar() || m.atStartOfText()); moveMark(1) {
 	}
+	return region{m2, *m}
+}
+
+func toLineEnd(m mark) region {
+	m2 := mark{m.line, m.maxCursPos(), m.buf}
 	return region{m, m2}
+}
+
+func toLineStart(m mark) region {
+	m2 := mark{m.line, 0, m.buf}
+	return region{m, m2}
+}
+
+func toLastTextChar(m mark) region {
+	m2 := mark{m.lastLine(), m.lastCharPos(), m.buf}
+	m2.fixPos()
+	return region{m, m2}
+}
+
+func toTextStart(m mark) region {
+	m2 := mark{0, 0, m.buf}
+	return region{m, m2}
+}
+
+func toWORDEnd(m mark) region {
+	return doMotion(&m, m.atEndOfWORD, m.moveRight)
 }
 
 func toWordEnd(m mark) region {
-	m2 := m
-	m2.moveRight(1)
-	for ; !m2.atEndOfWord(); m2.moveRight(1) {
-	}
-	return region{m, m2}
+	return doMotion(&m, m.atEndOfWord, m.moveRight)
 }
 
+func toNextWORDStart(m mark) region {
+	return doMotion(&m, m.atStartOfWORD, m.moveRight)
+}
+
+func toNextWordStart(m mark) region {
+	return doMotion(&m, m.atStartOfWord, m.moveRight)
+}
 func toWORDStart(m mark) region {
-	m2 := m
-	m2.moveLeft(1)
-	for ; !m2.atStartOfWORD(); m2.moveLeft(1) {
-	}
-	return region{m, m2}
+	return doMotion(&m, m.atStartOfWORD, m.moveLeft)
 }
 
 func toWordStart(m mark) region {
-	m2 := m
-	m2.moveLeft(1)
-	for ; !m2.atStartOfWord(); m2.moveLeft(1) {
-	}
-	return region{m, m2}
+	return doMotion(&m, m.atStartOfWord, m.moveLeft)
 }
 
 // a non-space followed by either a space or newline
@@ -139,7 +161,7 @@ func (m *mark) atStartOfWord() bool {
 func findRight(m mark, r *regexp.Regexp) mark {
 	text := m.buf.text
 	offset := m.pos + 1
-	for ln := m.line; ln <= m.maxLine(); ln++ {
+	for ln := m.line; ln <= m.lastLine(); ln++ {
 		s := string(text[ln][offset:])
 		pos := r.FindStringIndex(s)
 		if pos != nil {

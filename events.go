@@ -18,11 +18,12 @@ func executeCommands(ui UI, cmds chan cmdContext) {
 
 func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 	var (
-		ctx        *cmdContext = &cmdContext{}
-		nextParser parseFunc   = parseAction
-		ev         UIEvent
+		nextParser     parseFunc = parseAction
+		reconsumeEvent bool
+		ev             UIEvent
 	)
 	reprocess := make(chan UIEvent)
+	ctx := &cmdContext{}
 	for {
 		// first we check if we need to reprocess an old keypress, if not we either
 		// wait for a new keypress or a timeout
@@ -37,7 +38,7 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 			}
 		}
 		//var reconsumeEvent bool
-		nextParser, reconsumeEvent := nextParser(&ev, ctx, commands)
+		nextParser, reconsumeEvent = nextParser(&ev, ctx, commands)
 		if nextParser == nil {
 			ctx = &cmdContext{}
 			nextParser = parseAction
@@ -50,13 +51,13 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 
 func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
-	// if called by a timeout execute a matched string command if we have one
 	switch {
+	// if called by a timeout execute a matched string command if we have one
 	case ev.Type == UIEventTimeout:
 		if ctx.cmdString != "" {
 			c := lookupStringCmd(ctx.point.buf.mod, ctx.cmdString)
 			if c.cmd != nil {
-				return pushCmd(c, *ctx, cmds), false
+				return pushCmd(c, ctx, cmds), false
 			}
 			if ctx.point.buf.mod == insertMode {
 				ctx.cmdString = ""
@@ -65,14 +66,14 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		return parseAction, false
 	case ev.Key.isSpecial:
 		c := lookupStringCmd(ev.Buf.mod, ctx.cmdString)
-		// if we have a valid comment in the pipeline we'll execute it and reprocess
+		// if we have a valid command in the pipeline we'll execute it and reprocess
 		// the special key at next iteration
 		if c.cmd != nil {
 			reprocessEvent = true
 		} else {
 			c = lookupKeyCmd(ev.Buf.mod, ev.Key.Special)
 		}
-		return pushCmd(c, *ctx, cmds), reprocessEvent
+		return pushCmd(c, ctx, cmds), reprocessEvent
 	case isNumber(ev.Key.Char, ctx) && ctx.cmdString == "":
 		loadNumber(ev.Key.Char, ctx)
 		return parseAction, false
@@ -83,7 +84,8 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		c, submatches := matchCommand(ev.Buf.mod, ctx.cmdString, ctx.customList)
 		ctx.customList = submatches
 		if m == insertMode {
-			pushCmd(command{insertChar, nil}, *ctx, cmds)
+			// we insert the char and just delete it later if we match a command
+			pushCmd(command{insertChar, nil}, ctx, cmds)
 		}
 		switch {
 		case len(submatches) == 0:
@@ -92,7 +94,7 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			if m == normalMode {
 				c = lookupStringCmd(ev.Buf.mod, ctx.cmdString[:len(ctx.cmdString)-1])
 				if c.cmd != nil {
-					return pushCmd(c, *ctx, cmds), true
+					return pushCmd(c, ctx, cmds), true
 				}
 			}
 			return nil, false
@@ -105,17 +107,19 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 				}
 				ctx.silent = false
 			}
-			return pushCmd(c, *ctx, cmds), false
+			return pushCmd(c, ctx, cmds), false
 		default:
 			return parseAction, false
 		}
 	}
 }
 
-func pushCmd(c command, ctx cmdContext, cmds chan cmdContext) parseFunc {
-	if c.cmd != nil && c.parser == nil {
+func pushCmd(c command, ctx *cmdContext, cmds chan cmdContext) parseFunc {
+	if c.cmd != nil {
 		ctx.cmd = c.cmd
-		cmds <- ctx
+		if c.parser == nil {
+			cmds <- *ctx
+		}
 	}
 	ctx.customList = nil
 	return c.parser
@@ -150,23 +154,34 @@ func matchCommand(mod mode, s string, list []string) (
 	return match, subMatches
 }
 
-func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (parseFunc, bool) {
-	// we'll use ctx.customList to save the submatches so far
+func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
+	nextParser parseFunc, reprocessEvent bool) {
 	switch {
-	// if we were called by a timeout...
+	// if called by a timeout execute a matched string command if we have one
 	case ev.Type == UIEventTimeout:
+		if ctx.argString != "" {
+			ctx.reg = regionFuncs[ctx.argString]
+			if ctx.reg != nil {
+				cmds <- *ctx
+				return nil, false
+			}
+		}
+		return parseRegion, false
+	case ev.Key.isSpecial:
 		ctx.reg = regionFuncs[ctx.argString]
+		// if we have a valid region in the pipeline we'll execute it; in any
+		// case we reset parsing and reprocess the event
 		if ctx.reg != nil {
 			cmds <- *ctx
-			return nil, false
 		}
-	// if we need to load a number...
+		return nil, true
 	case isNumber(ev.Key.Char, ctx) && ctx.argString == "":
 		loadNumber(ev.Key.Char, ctx)
-	// otherwise we match the char
+		return parseRegion, false
 	default:
 		ctx.argString += string(ev.Key.Char)
 		match, subMatches := matchRegionFunc(ctx.argString, ctx.customList, regionFuncs)
+		ctx.customList = subMatches
 		switch len(subMatches) {
 		case 0:
 			return nil, false
@@ -177,10 +192,10 @@ func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (parseFunc,
 				cmds <- *ctx
 				return nil, false
 			}
+		default:
 		}
-		ctx.customList = subMatches
+		return parseRegion, false
 	}
-	return parseRegion, false
 }
 
 func matchRegionFunc(s string, list []string, m map[string]regionFunc) (
@@ -190,7 +205,7 @@ func matchRegionFunc(s string, list []string, m map[string]regionFunc) (
 	if list == nil {
 		for key := range m {
 			if key[0] == s[0] {
-				list = append(list, key)
+				subMatches = append(subMatches, key)
 				// if exact match
 				if len(key) == 1 {
 					match = key
