@@ -15,6 +15,7 @@ func check(e error) {
 
 func cleanExit() {
 	if r := recover(); r != nil {
+		debug.printStack()
 		exitSignal <- true
 
 	}
@@ -29,6 +30,10 @@ func initFrontEnd(activeBuf *buffer) (UI, error) {
 }
 
 func main() {
+	// initialize debug logging, available through a logger called debug
+	debug = initDebug()
+	defer debug.stop()
+
 	// initialize internal engine and create an empty buffer as current buffer
 	be := initBackend()
 	b := be.newBuffer("")

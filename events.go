@@ -224,5 +224,6 @@ func matchRegionFunc(s string, list []string, m map[string]regionFunc) (
 			}
 		}
 	}
+	debug.Printf("match %v, subMatches %v\n", match, subMatches)
 	return
 }

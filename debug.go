@@ -3,15 +3,30 @@ package main
 import (
 	"log"
 	"os"
+	"runtime"
 )
 
-var debug *log.Logger
+type debugLogger struct {
+	*log.Logger
+	logfile *os.File
+}
 
-func init() {
+var debug *debugLogger
+
+func initDebug() *debugLogger {
 	f, err := os.OpenFile("log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	check(err)
-	defer f.Close()
-	logPrefix := " * "
+	logPrefix := "(debug) "
 	logFlags := log.Ldate + log.Ltime + log.Lshortfile
-	debug = log.New(f, logPrefix, logFlags)
+	return &debugLogger{log.New(f, logPrefix, logFlags), f}
+}
+
+func (d *debugLogger) printStack() {
+	b := make([]byte, 1024)
+	runtime.Stack(b, false)
+	d.Printf(" * Fatal error * \n\n%s\n", b)
+}
+
+func (d *debugLogger) stop() {
+	d.logfile.Close()
 }
