@@ -56,6 +56,9 @@ func main() {
 		for ev := range uiEvents {
 			switch ev.Type {
 			case UIEventKey:
+				if ev.Key.Special == KeyF1 {
+					exitSignal <- true
+				}
 				keys <- ev
 			case UIEventError:
 				check(ev.Err)
