@@ -153,7 +153,7 @@ func delete_(ctx *cmdContext) {
 	}
 	for i := 0; i < ctx.num; i++ {
 		r := ctx.reg(*ctx.point)
-		*ctx.point = eng.deleteRegion(r)
+		*ctx.point = be.deleteRegion(r)
 	}
 	ctx.point.buf.cs = *ctx.point
 }
@@ -167,31 +167,31 @@ func deleteCharForward(ctx *cmdContext) {
 		ctx.num = 1
 	}
 	for i := 0; i < ctx.num; i++ {
-		eng.deleteCharForward(*ctx.point)
+		be.deleteCharForward(*ctx.point)
 		ctx.point.fixPos()
 	}
 }
 
 func deleteCharBackward(ctx *cmdContext) {
-	*ctx.point = eng.deleteCharBackward(*ctx.point)
+	*ctx.point = be.deleteCharBackward(*ctx.point)
 }
 
 func insertTab(ctx *cmdContext) {
-	eng.insertChar(*ctx.point, '\t')
+	be.insertChar(*ctx.point, '\t')
 	ctx.point.moveRight(1)
 }
 
 func insertSpace(ctx *cmdContext) {
-	eng.insertChar(*ctx.point, ' ')
+	be.insertChar(*ctx.point, ' ')
 	ctx.point.moveRight(1)
 }
 
 func insertNewLine(ctx *cmdContext) {
-	eng.insertNewLineChar(*ctx.point)
+	be.insertNewLineChar(*ctx.point)
 	ctx.point.set(ctx.point.line+1, 0)
 }
 
 func insertChar(ctx *cmdContext) {
-	eng.insertChar(*ctx.point, ctx.char)
+	be.insertChar(*ctx.point, ctx.char)
 	ctx.point.moveRight(1)
 }

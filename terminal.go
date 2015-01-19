@@ -31,7 +31,7 @@ func (t *terminal) Draw() {
 	// viPos tracks the visual position of chars in the line since some chars
 	// might take two spaces on screen
 	b := t.CurrentBuffer()
-	for i, line := range eng.text(b) {
+	for i, line := range be.text(b) {
 		viPos := 0
 		for _, ch := range line {
 			t.setCell(viPos, i, ch)
@@ -40,7 +40,7 @@ func (t *terminal) Draw() {
 	}
 	if _debug {
 		offset := 80
-		for l, line := range eng.text(b) {
+		for l, line := range be.text(b) {
 			s := fmt.Sprintf("%q", line)
 			for c, ch := range s {
 				t.setCell(c+offset, l, ch)
@@ -48,8 +48,8 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
-	stringBeforeCs := string(eng.text(b)[eng.cursorLine(b)][:eng.cursorPos(b)])
-	t.setCursor(runewidth.StringWidth(stringBeforeCs), eng.cursorLine(b))
+	stringBeforeCs := string(be.text(b)[be.cursorLine(b)][:be.cursorPos(b)])
+	t.setCursor(runewidth.StringWidth(stringBeforeCs), be.cursorLine(b))
 	t.flush()
 }
 
@@ -57,9 +57,9 @@ func (t *terminal) statusLine() {
 	termw, termh := termbox.Size()
 	termw += 0
 	line := termh - 2
-	args := eng.statusLine(t.CurrentBuffer())
+	args := be.statusLine(t.CurrentBuffer())
 	s := fmt.Sprintf("Line %v, char %v, raw line %v, total chars %v, total lines %v",
-		eng.cursorLine(t.CurrentBuffer())+1, args[0], args[1], args[2], args[3])
+		be.cursorLine(t.CurrentBuffer())+1, args[0], args[1], args[2], args[3])
 	for i, ch := range s {
 		t.setCell(i, line, ch)
 	}

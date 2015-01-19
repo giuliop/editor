@@ -147,7 +147,7 @@ func findRight(m mark, r *regexp.Regexp) mark {
 		}
 		offset = 0
 	}
-	return eng.lastTextCharPos(m)
+	return be.lastTextCharPos(m)
 }
 
 func findLeft(m mark, r *regexp.Regexp) mark {
@@ -163,5 +163,5 @@ func findLeft(m mark, r *regexp.Regexp) mark {
 			return mark{ln, pos[2], m.buf}
 		}
 	}
-	return eng.firstTextCharPos(m)
+	return be.firstTextCharPos(m)
 }

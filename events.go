@@ -16,7 +16,7 @@ func executeCommands(ui UI, cmds chan cmdContext) {
 	}
 }
 
-func manageEventKey(ui UI, keyEvents chan UIEvent, commands chan cmdContext) {
+func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 	var (
 		ctx        *cmdContext = &cmdContext{}
 		nextParser parseFunc   = parseAction
@@ -30,7 +30,7 @@ func manageEventKey(ui UI, keyEvents chan UIEvent, commands chan cmdContext) {
 		case ev = <-reprocess:
 		default:
 			select {
-			case ev = <-keyEvents:
+			case ev = <-keys:
 				ctx.point = &ev.Buf.cs
 			case <-time.After(keypressTimeout):
 				ev.Type = UIEventTimeout
