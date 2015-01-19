@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -8,7 +9,7 @@ import (
 const keypressTimeout = 750 * time.Millisecond
 
 func executeCommands(ui UI, cmds chan cmdContext) {
-	defer cleanExit()
+	defer cleanupOnError()
 	for c := range cmds {
 		c.cmd(&c)
 		if !c.silent {
@@ -17,15 +18,16 @@ func executeCommands(ui UI, cmds chan cmdContext) {
 	}
 }
 
+var ctx *cmdContext //here for debugging
 func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
-	defer cleanExit()
+	defer cleanupOnError()
 	var (
 		nextParser     parseFunc = parseAction
 		reconsumeEvent bool
 		ev             UIEvent
 	)
 	reprocess := make(chan UIEvent)
-	ctx := &cmdContext{}
+	ctx = &cmdContext{}
 	for {
 		// first we check if we need to reprocess an old keypress, if not we either
 		// wait for a new keypress or a timeout
@@ -39,8 +41,14 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 				ev.Type = UIEventTimeout
 			}
 		}
-		//var reconsumeEvent bool
+		oldParser := nextParser
+
 		nextParser, reconsumeEvent = nextParser(&ev, ctx, commands)
+
+		if fmt.Sprintf("%v", nextParser) != fmt.Sprintf("%v", oldParser) {
+			debug.Printf("changed nextParser:%v -> %v", oldParser, nextParser)
+		}
+
 		if nextParser == nil {
 			ctx = &cmdContext{}
 			nextParser = parseAction
@@ -158,6 +166,7 @@ func matchCommand(mod mode, s string, list []string) (
 
 func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
+	debug.Println("In parseRegion")
 	switch {
 	// if called by a timeout execute a matched string command if we have one
 	case ev.Type == UIEventTimeout:
@@ -190,7 +199,7 @@ func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		case 1:
 			// if it is an exact match
 			if match != "" {
-				ctx.reg = regionFuncs[subMatches[0]]
+				ctx.reg = regionFuncs[match]
 				cmds <- *ctx
 				return nil, false
 			}
@@ -204,6 +213,7 @@ func matchRegionFunc(s string, list []string, m map[string]regionFunc) (
 	match string, subMatches []string) {
 	// if list is nil it is the first iteraction and we need to build it
 	// from the map; s will be a single char
+	debug.Println("Entered matchRegionFunc")
 	if list == nil {
 		for key := range m {
 			if key[0] == s[0] {

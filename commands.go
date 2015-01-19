@@ -164,7 +164,9 @@ func delete_(ctx *cmdContext) {
 	}
 	for i := 0; i < ctx.num; i++ {
 		r := ctx.reg(*ctx.point)
+		debug.Println("calling deleteRegion")
 		*ctx.point = be.deleteRegion(r)
+		debug.Println("returned from deleteRegion")
 	}
 	ctx.point.buf.cs = *ctx.point
 }
@@ -185,7 +187,7 @@ func deleteToEnd(ctx *cmdContext) {
 }
 
 func exitProgram(ctx *cmdContext) {
-	exitSignal <- true
+	exit <- true
 }
 
 func deleteCharForward(ctx *cmdContext) {

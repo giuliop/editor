@@ -2,8 +2,8 @@
 package main
 
 var (
-	be         backend           // the open buffers collection backend
-	exitSignal = make(chan bool) // a channel to signal quitting the program
+	be   backend           // the open buffers collection backend
+	exit = make(chan bool) // a channel to signal quitting the program
 )
 
 // check panics if passed an error
@@ -13,10 +13,17 @@ func check(e error) {
 	}
 }
 
-func cleanExit() {
+func forceExit() {
+	debug.Print(" * Force Exit * \n\n")
+	debug.Printf("%+v", *ctx)
+	exit <- true
+}
+
+func cleanupOnError() {
 	if r := recover(); r != nil {
+		debug.Print(" * Fatal error * \n\n")
 		debug.printStack()
-		exitSignal <- true
+		exit <- true
 
 	}
 }
@@ -62,7 +69,7 @@ func main() {
 			switch ev.Type {
 			case UIEventKey:
 				if ev.Key.Special == KeyF1 {
-					exitSignal <- true
+					forceExit()
 				}
 				keys <- ev
 			case UIEventError:
@@ -72,5 +79,5 @@ func main() {
 	}()
 
 	// wait for exit signal
-	<-exitSignal
+	<-exit
 }

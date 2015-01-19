@@ -24,7 +24,7 @@ func initDebug() *debugLogger {
 func (d *debugLogger) printStack() {
 	b := make([]byte, 1024)
 	runtime.Stack(b, false)
-	d.Printf(" * Fatal error * \n\n%s\n", b)
+	d.Printf("%s", b)
 }
 
 func (d *debugLogger) stop() {
