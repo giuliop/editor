@@ -13,6 +13,13 @@ func check(e error) {
 	}
 }
 
+func cleanExit() {
+	if r := recover(); r != nil {
+		exitSignal <- true
+
+	}
+}
+
 func initFrontEnd(activeBuf *buffer) (UI, error) {
 	ui, err := selectUI("terminal")
 	if err == nil {
@@ -32,21 +39,20 @@ func main() {
 	check(err)
 	ui.Draw()
 
-	// activate channel for IO events
+	//activate channels for keypresses and recognized commands
+	keys := make(chan UIEvent, 99)
+	commands := make(chan cmdContext, 10)
+	go manageKeypress(ui, keys, commands)
+	go executeCommands(ui, commands)
+
+	// listen for events and route them to appropriate channel
 	uiEvents := make(chan UIEvent, 100)
 	go func() {
 		for {
 			uiEvents <- ui.PollEvent()
 		}
 	}()
-
-	//activate command manager
 	go func() {
-		keys := make(chan UIEvent, 99)
-		commands := make(chan cmdContext, 10)
-		go manageKeypress(ui, keys, commands)
-		go executeCommands(ui, commands)
-		// listen for events and route them to appropriate channel
 		for ev := range uiEvents {
 			switch ev.Type {
 			case UIEventKey:

@@ -171,13 +171,13 @@ func delete_(ctx *cmdContext) {
 
 func deleteToStart(ctx *cmdContext) {
 	b := ctx.point.buf
-	eng.deleteLines(mark{0, 0, b}, *ctx.point)
+	be.deleteLines(mark{0, 0, b}, *ctx.point)
 	b.cs = mark{0, 0, b}
 }
 
 func deleteToEnd(ctx *cmdContext) {
 	b := ctx.point.buf
-	eng.deleteLines(*ctx.point, mark{ctx.point.lastLine(), 0, b})
+	be.deleteLines(*ctx.point, mark{ctx.point.lastLine(), 0, b})
 	b.cs = mark{ctx.point.line - 1, 0, b}
 	if b.cs.line < 0 {
 		b.cs.line = 0

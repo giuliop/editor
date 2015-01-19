@@ -14,7 +14,7 @@ func (m *mark) atFirstLine() bool {
 	return m.line == 0
 }
 
-func (m *mark) atlastLine() bool {
+func (m *mark) atLastLine() bool {
 	return m.line == m.lastLine()
 }
 
@@ -32,11 +32,11 @@ func (m *mark) atStartOfText() bool {
 }
 
 func (m *mark) atEndOfText() bool {
-	return m.atlastLine() && m.atLineEnd()
+	return m.atLastLine() && m.atLineEnd()
 }
 
 func (m *mark) atLastTextChar() bool {
-	return m.atlastLine() && (m.pos == m.lastCharPos() || m.atLineEnd())
+	return m.atLastLine() && (m.pos == m.lastCharPos() || m.atLineEnd())
 }
 
 // lastCharPos return the position of the last char in the line before the newline

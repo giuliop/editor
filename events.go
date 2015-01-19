@@ -8,6 +8,7 @@ import (
 const keypressTimeout = 750 * time.Millisecond
 
 func executeCommands(ui UI, cmds chan cmdContext) {
+	defer cleanExit()
 	for c := range cmds {
 		c.cmd(&c)
 		if !c.silent {
@@ -17,6 +18,7 @@ func executeCommands(ui UI, cmds chan cmdContext) {
 }
 
 func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
+	defer cleanExit()
 	var (
 		nextParser     parseFunc = parseAction
 		reconsumeEvent bool

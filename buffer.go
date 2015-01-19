@@ -136,7 +136,7 @@ func (be *backend) deleteRegion(r region) mark {
 		b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[fr.line][to.pos+1:]...)
 	} else {
 		if to.line > fr.line+1 {
-			to.line -= e.deleteLines(mark{fr.line + 1, 0, b}, mark{to.line - 1, 0, b})
+			to.line -= be.deleteLines(mark{fr.line + 1, 0, b}, mark{to.line - 1, 0, b})
 		}
 		//delete required chars from fr and to lines
 		b.text[fr.line] = b.text[fr.line][:fr.pos]
