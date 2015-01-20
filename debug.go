@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"runtime"
@@ -29,4 +30,31 @@ func (d *debugLogger) printStack() {
 
 func (d *debugLogger) stop() {
 	d.logfile.Close()
+}
+
+// unsafePrintChannel reads a channel, logs the content, and put it back leaving
+// the channel as it was. Not safe for concurrent access
+func (d *debugLogger) unsafePrintChannel(c chan UIEvent) {
+	c2 := make(chan UIEvent, 1000)
+	s := "["
+loop:
+	for {
+		select {
+		case x := <-c:
+			s += fmt.Sprintf(" %v ", x)
+			c2 <- x
+		default:
+			s += "]"
+			break loop
+		}
+	}
+	debug.Println(s)
+	for {
+		select {
+		case x := <-c2:
+			c <- x
+		default:
+			return
+		}
+	}
 }

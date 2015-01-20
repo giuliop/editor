@@ -17,7 +17,6 @@ func executeCommands(ui UI, cmds chan cmdContext) {
 	}
 }
 
-var ctx *cmdContext //here for debugging
 func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 	defer cleanupOnError()
 	var (
@@ -26,7 +25,7 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 		ev             UIEvent
 	)
 	reprocess := make(chan UIEvent, 100)
-	ctx = &cmdContext{}
+	ctx := &cmdContext{}
 	for {
 		// first we check if we need to reprocess an old keypress, if not we either
 		// wait for a new keypress or a timeout
@@ -40,13 +39,7 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 				ev.Type = UIEventTimeout
 			}
 		}
-		oldParser := nextParser
-
 		nextParser, reconsumeEvent = nextParser(&ev, ctx, commands)
-
-		//if fmt.Sprintf("%v", nextParser) != fmt.Sprintf("%v", oldParser) {
-		debug.Printf("changed nextParser:%v -> %v", oldParser, nextParser)
-		//}
 		if reconsumeEvent {
 			reprocess <- ev
 		}
@@ -59,7 +52,6 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 
 func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
-	debug.Println("In parseAction")
 	switch {
 	// if called by a timeout execute a matched string command if we have one
 	case ev.Type == UIEventTimeout:
@@ -102,7 +94,6 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			// and if so execute the command and reprocess the char
 			if m == normalMode {
 				c = lookupStringCmd(ev.Buf.mod, ctx.cmdString[:len(ctx.cmdString)-1])
-				debug.Printf("ctx.cmdstring[:len-1]: %v, c: %+v", ctx.cmdString[:len(ctx.cmdString)-1], c)
 				if c.cmd != nil {
 					return pushCmd(c, ctx, cmds), true
 				}
@@ -166,7 +157,6 @@ func matchCommand(mod mode, s string, list []string) (
 
 func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
-	debug.Println("In parseRegion")
 	switch {
 	// if called by a timeout execute a matched string command if we have one
 	case ev.Type == UIEventTimeout:
@@ -213,7 +203,6 @@ func matchRegionFunc(s string, list []string, m map[string]regionFunc) (
 	match string, subMatches []string) {
 	// if list is nil it is the first iteraction and we need to build it
 	// from the map; s will be a single char
-	debug.Println("Entered matchRegionFunc")
 	if list == nil {
 		for key := range m {
 			if key[0] == s[0] {
@@ -234,6 +223,5 @@ func matchRegionFunc(s string, list []string, m map[string]regionFunc) (
 			}
 		}
 	}
-	debug.Printf("match %v, subMatches %v\n", match, subMatches)
 	return
 }
