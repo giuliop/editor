@@ -15,13 +15,14 @@ func check(e error) {
 
 func forceExit() {
 	debug.Print(" * Force Exit * \n\n")
-	debug.Printf("%+v", *ctx)
+	//debug.Printf("%+v", *ctx)
 	exit <- true
 }
 
 func cleanupOnError() {
 	if r := recover(); r != nil {
 		debug.Print(" * Fatal error * \n\n")
+		debug.Println(r)
 		debug.printStack()
 		exit <- true
 

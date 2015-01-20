@@ -120,13 +120,22 @@ func (be *backend) joinLineBelow(m mark) {
 
 func (be *backend) deleteLine(m mark) {
 	b := m.buf
+	if len(b.text) == 1 {
+		b.text[0] = newLine()
+		return
+	}
 	b.text = append(b.text[:m.line], b.text[m.line+1:]...)
 }
 
 func (be *backend) deleteLines(m1, m2 mark) int {
 	b := m1.buf
+	if m1.atFirstLine() && m2.atLastLine() {
+		b.text[0] = newLine()
+		b.text = b.text[:1]
+		return m2.line
+	}
 	b.text = append(b.text[:m1.line], b.text[m2.line+1:]...)
-	return m1.line - m2.line
+	return m2.line - m1.line + 1
 }
 
 func (be *backend) deleteRegion(r region) mark {
