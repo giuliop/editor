@@ -52,8 +52,8 @@ func main() {
 	ui.Draw()
 
 	//activate channels for keypresses and recognized commands
-	keys := make(chan UIEvent, 99)
-	commands := make(chan cmdContext, 10)
+	keys := make(chan UIEvent, 100)
+	commands := make(chan cmdContext, 100)
 	go manageKeypress(ui, keys, commands)
 	go executeCommands(ui, commands)
 

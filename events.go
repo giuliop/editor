@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"time"
 )
@@ -26,7 +25,7 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 		reconsumeEvent bool
 		ev             UIEvent
 	)
-	reprocess := make(chan UIEvent)
+	reprocess := make(chan UIEvent, 100)
 	ctx = &cmdContext{}
 	for {
 		// first we check if we need to reprocess an old keypress, if not we either
@@ -45,22 +44,22 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 
 		nextParser, reconsumeEvent = nextParser(&ev, ctx, commands)
 
-		if fmt.Sprintf("%v", nextParser) != fmt.Sprintf("%v", oldParser) {
-			debug.Printf("changed nextParser:%v -> %v", oldParser, nextParser)
+		//if fmt.Sprintf("%v", nextParser) != fmt.Sprintf("%v", oldParser) {
+		debug.Printf("changed nextParser:%v -> %v", oldParser, nextParser)
+		//}
+		if reconsumeEvent {
+			reprocess <- ev
 		}
-
 		if nextParser == nil {
 			ctx = &cmdContext{}
 			nextParser = parseAction
-		}
-		if reconsumeEvent {
-			reprocess <- ev
 		}
 	}
 }
 
 func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
+	debug.Println("In parseAction")
 	switch {
 	// if called by a timeout execute a matched string command if we have one
 	case ev.Type == UIEventTimeout:
@@ -103,6 +102,7 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			// and if so execute the command and reprocess the char
 			if m == normalMode {
 				c = lookupStringCmd(ev.Buf.mod, ctx.cmdString[:len(ctx.cmdString)-1])
+				debug.Printf("ctx.cmdstring[:len-1]: %v, c: %+v", ctx.cmdString[:len(ctx.cmdString)-1], c)
 				if c.cmd != nil {
 					return pushCmd(c, ctx, cmds), true
 				}
