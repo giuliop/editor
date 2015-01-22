@@ -50,31 +50,33 @@ var cmdKeyNormalMode = map[Key]command{
 //KeyEsc:        command{exitProgram, nil},
 }
 
+// commands should be at most two chars to avoid risk of over-shadowing one char
+// command (e.g., 'dgg' could overshadow command 'd')
 var cmdStringNormalMode = map[string]command{
-	",q":  command{exitProgram, nil},
-	"i":   command{insertAtCs, nil},
-	"a":   command{appendAtCs, nil},
-	"A":   command{appendAtEndOfLine, nil},
-	"h":   command{moveCursorLeft, nil},
-	"j":   command{moveCursorDown, nil},
-	"k":   command{moveCursorUp, nil},
-	"l":   command{moveCursorRight, nil},
-	"d":   command{delete_, parseRegion},
-	"x":   command{deleteCharForward, nil},
-	"e":   command{moveCursorTo, nil},
-	"E":   command{moveCursorTo, nil},
-	"B":   command{moveCursorTo, nil},
-	"b":   command{moveCursorTo, nil},
-	"w":   command{moveCursorTo, nil},
-	"W":   command{moveCursorTo, nil},
-	"0":   command{moveCursorTo, nil},
-	"$":   command{moveCursorTo, nil},
-	"H":   command{moveCursorTo, nil},
-	"L":   command{moveCursorTo, nil},
-	"gg":  command{moveCursorTo, nil},
-	"G":   command{moveCursorTo, nil},
-	"dgg": command{deleteToStart, nil},
-	"dG":  command{deleteToEnd, nil},
+	",q": command{exitProgram, nil},
+	"i":  command{insertAtCs, nil},
+	"a":  command{appendAtCs, nil},
+	"A":  command{appendAtEndOfLine, nil},
+	"h":  command{moveCursorLeft, nil},
+	"j":  command{moveCursorDown, nil},
+	"k":  command{moveCursorUp, nil},
+	"l":  command{moveCursorRight, nil},
+	"d":  command{delete_, parseRegion},
+	"x":  command{deleteCharForward, nil},
+	"e":  command{moveCursorTo, nil},
+	"E":  command{moveCursorTo, nil},
+	"B":  command{moveCursorTo, nil},
+	"b":  command{moveCursorTo, nil},
+	"w":  command{moveCursorTo, nil},
+	"W":  command{moveCursorTo, nil},
+	"0":  command{moveCursorTo, nil},
+	"$":  command{moveCursorTo, nil},
+	"H":  command{moveCursorTo, nil},
+	"L":  command{moveCursorTo, nil},
+	"gg": command{moveCursorTo, nil},
+	"G":  command{moveCursorTo, nil},
+	//"dgg": command{deleteToStart, nil},
+	"dq": command{deleteToEnd, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{
@@ -107,7 +109,7 @@ func insertAtCs(ctx *cmdContext) {
 func appendAtCs(ctx *cmdContext) {
 	// move cursor right unless empty line
 	ctx.point.buf.mod = insertMode
-	if !ctx.point.emptyLine() {
+	if !ctx.point.atEmptyLine() {
 		ctx.point.moveRight(1)
 	}
 }
@@ -162,11 +164,16 @@ func delete_(ctx *cmdContext) {
 	if ctx.num == 0 {
 		ctx.num = 1
 	}
-	for i := 0; i < ctx.num; i++ {
-		r := ctx.reg(*ctx.point)
-		debug.Println("calling deleteRegion")
-		*ctx.point = be.deleteRegion(r)
-		debug.Println("returned from deleteRegion")
+	switch ctx.argString {
+	case "gg":
+		deleteToStart(ctx)
+	case "G":
+		deleteToEnd(ctx)
+	default:
+		for i := 0; i < ctx.num; i++ {
+			r := ctx.reg(*ctx.point)
+			*ctx.point = be.deleteRegion(r)
+		}
 	}
 	ctx.point.buf.cs = *ctx.point
 }

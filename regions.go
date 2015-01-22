@@ -26,8 +26,8 @@ var motions = map[string]regionFunc{
 	"L":  toLineEnd,
 	"0":  toLineStart,
 	"H":  toLineStart,
-	"gg": toTextStart,
-	"G":  toLastTextChar,
+	"gg": toFirstLine,
+	"G":  toLastLine,
 }
 
 var regionFuncs = map[string]regionFunc{
@@ -94,13 +94,12 @@ func toLineStart(m mark) region {
 	return region{m, m2}
 }
 
-func toLastTextChar(m mark) region {
-	m2 := mark{m.lastLine(), m.lastCharPos(), m.buf}
-	m2.fixPos()
+func toLastLine(m mark) region {
+	m2 := mark{m.lastLine(), 0, m.buf}
 	return region{m, m2}
 }
 
-func toTextStart(m mark) region {
+func toFirstLine(m mark) region {
 	m2 := mark{0, 0, m.buf}
 	return region{m, m2}
 }

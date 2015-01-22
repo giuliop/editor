@@ -54,7 +54,7 @@ func (m *mark) maxCursPos() int {
 	return max
 }
 
-func (m *mark) emptyLine() bool {
+func (m *mark) atEmptyLine() bool {
 	return m.lastCharPos() == -1
 }
 
@@ -186,4 +186,8 @@ func (m *mark) deltaChars(m2 mark) (delta int) {
 		delta *= -1
 	}
 	return delta
+}
+
+func (m *mark) totalLines() int {
+	return len(m.buf.text)
 }

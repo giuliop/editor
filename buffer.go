@@ -142,14 +142,28 @@ func (be *backend) deleteRegion(r region) mark {
 	var fr, to = orderMarks(r.start, r.end)
 	b := fr.buf
 	if fr.line == to.line {
-		b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[fr.line][to.pos+1:]...)
+		b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[fr.line][to.pos:]...)
 	} else {
 		if to.line > fr.line+1 {
 			to.line -= be.deleteLines(mark{fr.line + 1, 0, b}, mark{to.line - 1, 0, b})
 		}
-		//delete required chars from fr and to lines
-		b.text[fr.line] = b.text[fr.line][:fr.pos]
-		b.text[to.line] = b.text[to.line][to.pos+1:]
+		//delete required chars from fr and to lines; if then empty delete them
+		// making sure at least one line is left in the buffer
+		b.text[to.line] = b.text[to.line][to.pos:]
+		if to.atEmptyLine() {
+			be.deleteLine(to)
+		}
+		switch {
+		case fr.pos > 0:
+			b.text[fr.line] = b.text[fr.line][:fr.pos]
+		case fr.totalLines() == 1:
+			b.text[fr.line] = newLine()
+		default:
+			be.deleteLine(fr)
+			if fr.line == fr.totalLines() {
+				fr.line -= 1
+			}
+		}
 	}
 	fr.fixPos()
 	return fr
