@@ -14,12 +14,13 @@ type UI interface {
 	//SetCell(x, y int, ch rune)
 	PollEvent() UIEvent
 	CurrentBuffer() *buffer
+	userMessage(s string)
 }
 
 func selectUI(name string) (UI, error) {
 	switch name {
 	case "terminal":
-		return &terminal{"term", nil}, nil
+		return &terminal{"term", nil, ""}, nil
 	}
 	return nil, fmt.Errorf("Unknown frontend")
 }

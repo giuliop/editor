@@ -1,6 +1,8 @@
 // Editor is a great editor, or at least it will be one day!
 package main
 
+import "os"
+
 var (
 	be   backend           // the open buffers collection backend
 	exit = make(chan bool) // a channel to signal quitting the program
@@ -19,13 +21,18 @@ func forceExit() {
 	exit <- true
 }
 
+func fatalError(e error) {
+	debug.Print(" * Fatal error * \n\n")
+	debug.Println(e)
+	exit <- true
+}
+
 func cleanupOnError() {
 	if r := recover(); r != nil {
 		debug.Print(" * Fatal error * \n\n")
 		debug.Println(r)
 		debug.printStack()
 		exit <- true
-
 	}
 }
 
@@ -44,10 +51,10 @@ func main() {
 
 	// initialize internal engine and create an empty buffer as current buffer
 	be := initBackend()
-	b := be.newBuffer("")
+	curBuf := be.open(os.Args[1:])
 
 	// initialize ui frontend with the new empty buffer as active buffer
-	ui, err := initFrontEnd(b)
+	ui, err := initFrontEnd(curBuf)
 	defer ui.Close()
 	check(err)
 	ui.Draw()

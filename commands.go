@@ -20,6 +20,7 @@ type cmdContext struct {
 	reg        regionFunc // optional region object
 	customList []string   // optional string slice object
 	silent     bool       // if true does not redraw the screen after execution
+	msg        string     // to comunicate back errors
 }
 
 type command struct {
@@ -47,7 +48,8 @@ var cmdStringTables = [2]map[string]command{cmdStringInsertMode, cmdStringNormal
 var cmdKeyTables = [2]map[Key]command{cmdKeyInsertMode, cmdKeyNormalMode}
 
 var cmdKeyNormalMode = map[Key]command{
-//KeyEsc:        command{exitProgram, nil},
+	//KeyEsc:        command{exitProgram, nil},
+	KeyCtrlS: command{saveToFile, nil},
 }
 
 // commands should be at most two chars to avoid risk of over-shadowing one char
@@ -89,6 +91,7 @@ var cmdKeyInsertMode = map[Key]command{
 	KeyCtrlJ:      command{insertNewLine, nil},
 	KeyCtrlC:      command{toNormalMode, nil},
 	KeyDelete:     command{deleteCharForward, nil},
+	KeyCtrlS:      command{saveToFile, nil},
 }
 
 var cmdStringInsertMode = map[string]command{
@@ -100,6 +103,7 @@ func toNormalMode(ctx *cmdContext) {
 	if !ctx.point.atLineStart() {
 		ctx.point.moveLeft(1)
 	}
+	ctx.msg = "Normal mode"
 }
 
 func insertAtCs(ctx *cmdContext) {
@@ -229,4 +233,13 @@ func insertNewLine(ctx *cmdContext) {
 func insertChar(ctx *cmdContext) {
 	be.insertChar(*ctx.point, ctx.char)
 	ctx.point.moveRight(1)
+}
+
+func saveToFile(ctx *cmdContext) {
+	err := ctx.point.buf.save()
+	if err != nil {
+		ctx.msg = err.Error()
+	} else {
+		ctx.msg = "file saved"
+	}
 }

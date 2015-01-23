@@ -12,6 +12,7 @@ func executeCommands(ui UI, cmds chan cmdContext) {
 	for c := range cmds {
 		c.cmd(&c)
 		if !c.silent {
+			ui.userMessage(c.msg)
 			ui.Draw()
 		}
 	}

@@ -10,8 +10,9 @@ import (
 const defCol = termbox.ColorDefault
 
 type terminal struct {
-	name   string
-	curBuf *buffer
+	name    string
+	curBuf  *buffer
+	message string // to hold messages to display to user
 }
 
 func (t *terminal) Init(b *buffer) error {
@@ -22,6 +23,10 @@ func (t *terminal) Init(b *buffer) error {
 func (t *terminal) Close() {
 	termbox.Close()
 	termbox.SetInputMode(termbox.InputEsc)
+}
+
+func (t *terminal) userMessage(s string) {
+	t.message = s
 }
 
 func (t *terminal) Draw() {
@@ -48,6 +53,7 @@ func (t *terminal) Draw() {
 		}
 	}
 	t.statusLine()
+	t.messageLine()
 	stringBeforeCs := string(be.text(b)[be.cursorLine(b)][:be.cursorPos(b)])
 	t.setCursor(runewidth.StringWidth(stringBeforeCs), be.cursorLine(b))
 	t.flush()
@@ -56,10 +62,20 @@ func (t *terminal) Draw() {
 func (t *terminal) statusLine() {
 	termw, termh := termbox.Size()
 	termw += 0
-	line := termh - 2
+	line := termh - 4
 	args := be.statusLine(t.CurrentBuffer())
 	s := fmt.Sprintf("Line %v, char %v, raw line %v, total chars %v, total lines %v",
 		be.cursorLine(t.CurrentBuffer())+1, args[0], args[1], args[2], args[3])
+	for i, ch := range s {
+		t.setCell(i, line, ch)
+	}
+}
+
+func (t *terminal) messageLine() {
+	termw, termh := termbox.Size()
+	termw += 0
+	line := termh - 2
+	s := t.curBuf.name + " - " + t.curBuf.filename + " - " + t.message
 	for i, ch := range s {
 		t.setCell(i, line, ch)
 	}

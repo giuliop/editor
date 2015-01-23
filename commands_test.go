@@ -11,7 +11,7 @@ var text1 = "" +
 	"tutto bene grazie e tu?\n" +
 	"non c'e' male, davvero\n"
 
-func newBuffer(name, text string) *buffer {
+func newTestBuffer(name, text string) *buffer {
 	b := _be.newBuffer(name)
 	lines := strings.Split(text, "\n")
 	t := make([]line, len(lines))
