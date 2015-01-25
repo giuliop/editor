@@ -9,8 +9,8 @@ type sample struct {
 
 var samples = []string{
 	defaultText,
-	//emptyText,
-	//emptyLinesText,
+	emptyText,
+	emptyLinesText,
 }
 
 func TestMotions(t *testing.T) {

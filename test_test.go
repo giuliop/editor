@@ -76,7 +76,7 @@ func (e keypressEmitter) emit(a ...interface{}) {
 		default:
 			panic("Unrecognized keypress type")
 		}
-		// wait a bit to let the commands run
+		// yield to let commands run before new events
 		time.Sleep(1 * time.Millisecond)
 	}
 }
