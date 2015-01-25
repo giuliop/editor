@@ -1,2 +1,5 @@
-what if a file has more lines than the line field of a mark can contain?
-what is a line has more characters than the pos files of a mark can contain?
+1. what if a file has more lines than the line field of a mark can contain
+2. what is a line has more characters than the pos files of a mark can contain
+3. what about 1 & 2 for save/open file (in terms of the underlying copy buffer)
+4. should enterNormalMode (& others?) be blocking functions? Otherwise parseAction
+   might read following keypresses with the wrong buffer mode
