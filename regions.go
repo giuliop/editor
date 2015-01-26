@@ -138,7 +138,7 @@ func (m *mark) atEndOfWORD() bool {
 func (m *mark) atStartOfWORD() bool {
 	c, p := m.char(), m.prevChar()
 	return m.atStartOfText() ||
-		(!unicode.IsSpace(c) && (unicode.IsSpace(p) || c == 0))
+		(!unicode.IsSpace(c) && (unicode.IsSpace(p) || p == 0))
 }
 
 // (symbol) word char followed by a non (symbol) word char
@@ -154,7 +154,8 @@ func (m *mark) atStartOfWord() bool {
 	c, p := m.char(), m.prevChar()
 	return m.atStartOfText() ||
 		(isWordChar(c) && !isWordChar(p)) ||
-		(isSymbolWordChar(c) && !isSymbolWordChar(p))
+		(isSymbolWordChar(c) && (!isSymbolWordChar(p) || unicode.IsSpace(p))) ||
+		(!unicode.IsSpace(c) && (p == 0))
 }
 
 func findRight(m mark, r *regexp.Regexp) mark {

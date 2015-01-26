@@ -27,20 +27,6 @@ func (u *testUI) PollEvent() UIEvent     { return UIEvent{} }
 func (u *testUI) CurrentBuffer() *buffer { return nil }
 func (u *testUI) userMessage(s string)   {}
 
-var (
-	defaultText = "" +
-		"ciao bello, come va?\n" +
-		"tutto bene grazie e tu?\n" +
-		"non c'e' male, davvero\n"
-
-	emptyText = "\n"
-
-	emptyLinesText = "" +
-		"\n" +
-		"\n" +
-		"\n"
-)
-
 func TestMain(m *testing.M) {
 	be = initBackend()
 	debug = initDebug()
