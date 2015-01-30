@@ -111,6 +111,52 @@ func TestWordMotions(t *testing.T) {
 		[]*quickmark{m(2, 0)},
 	}
 	expected := [][][]*quickmark{eMarks, bMarks, wMarks}
+	a := _testMotions(samples, testKeys, expected)
+	if a.failed {
+		for _, m := range a.errMsgs {
+			t.Error(m)
+		}
+	}
+}
+
+func TestWORDMotions(t *testing.T) {
+	var samples = []string{
+		defaultText,
+		emptyText,
+		emptyLinesText,
+	}
+	testKeys := []string{"E", "B", "W"}
+	eMarks := [][]*quickmark{
+		[]*quickmark{m(0, 9), m(0, 19), m(0, 29), m(1, 3), m(1, 6), m(1, 23), m(1, 30),
+			m(1, 46), m(1, 48), m(3, 16), m(3, 20), m(3, 24), m(3, 30), m(3, 33), m(4, 0),
+			m(5, 1), m(6, 2), m(6, 7), m(6, 13), m(6, 21), m(6, 26), m(6, 27)},
+		[]*quickmark{m(0, 0)},
+		[]*quickmark{m(2, 0)},
+	}
+	bMarks := [][]*quickmark{
+		[]*quickmark{m(6, 23), m(6, 15), m(6, 9), m(6, 4), m(6, 0), m(5, 1), m(4, 0),
+			m(3, 33), m(3, 26), m(3, 22), m(3, 18), m(3, 3), m(1, 48), m(1, 32), m(1, 25),
+			m(1, 8), m(1, 5), m(1, 0), m(0, 21), m(0, 11), m(0, 3), m(0, 0)},
+		[]*quickmark{m(0, 0)},
+		[]*quickmark{m(0, 0)},
+	}
+	wMarks := [][]*quickmark{
+		[]*quickmark{m(0, 3), m(0, 11), m(0, 21), m(1, 0), m(1, 5), m(1, 8), m(1, 25),
+			m(1, 32), m(1, 48), m(3, 3), m(3, 18), m(3, 22), m(3, 26), m(3, 33), m(4, 0),
+			m(5, 1), m(6, 0), m(6, 4), m(6, 9), m(6, 15), m(6, 23), m(6, 27)},
+		[]*quickmark{m(0, 0)},
+		[]*quickmark{m(2, 0)},
+	}
+	expected := [][][]*quickmark{eMarks, bMarks, wMarks}
+	a := _testMotions(samples, testKeys, expected)
+	if a.failed {
+		for _, m := range a.errMsgs {
+			t.Error(m)
+		}
+	}
+}
+
+func _testMotions(samples []string, testKeys []string, expected [][][]*quickmark) *asserter {
 	a := &asserter{}
 	for _s, s := range samples {
 		b := stringToBuffer(s)
@@ -128,9 +174,5 @@ func TestWordMotions(t *testing.T) {
 			}
 		}
 	}
-	if a.failed {
-		for _, m := range a.errMsgs {
-			t.Error(m)
-		}
-	}
+	return a
 }
