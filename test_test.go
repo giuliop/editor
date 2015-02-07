@@ -28,9 +28,6 @@ func (u *testUI) CurrentBuffer() *buffer { return nil }
 func (u *testUI) userMessage(s string)   {}
 
 func TestMain(m *testing.M) {
-	be = initBackend()
-	debug = initDebug()
-	defer debug.stop()
 	debug.Println("New test run\n")
 
 	stringToFile(defaultText, TESTFILENAME)
@@ -40,6 +37,7 @@ func TestMain(m *testing.M) {
 	go executeCommands(ui, commands)
 
 	defer func() {}()
+	debug.stop()
 	os.Exit(m.Run())
 }
 

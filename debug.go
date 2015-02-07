@@ -5,14 +5,13 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strings"
 )
 
 type debugLogger struct {
 	*log.Logger
 	logfile *os.File
 }
-
-var debug *debugLogger
 
 func initDebug() *debugLogger {
 	f, err := os.OpenFile("log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
@@ -56,5 +55,27 @@ loop:
 		default:
 			return
 		}
+	}
+}
+
+func keypressesToEmitString(ks []Keypress) string {
+	tokens := []string{}
+	for _, k := range ks {
+		tokens = append(tokens, keyToString(k))
+	}
+	return fmt.Sprintf("(\"%v\")", strings.Join(tokens, "\", \""))
+}
+
+func keyToString(k Keypress) string {
+	if k.isSpecial {
+		switch k.Special {
+		case 0x03:
+			return "KeyCtrlC"
+		default:
+			fatalError(fmt.Errorf("Unknown key %v", k.isSpecial))
+			return ""
+		}
+	} else {
+		return string(k.Char)
 	}
 }

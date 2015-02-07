@@ -38,6 +38,9 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 			select {
 			case ev = <-keys:
 				ctx.point = &ev.Buf.cs
+				if r.macro.on {
+					r.macro.record(ev.Key)
+				}
 			case <-time.After(keypressTimeout):
 				ev.Type = UIEventTimeout
 			}

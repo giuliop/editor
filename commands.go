@@ -20,36 +20,30 @@ type cmdContext struct {
 	reg        regionFunc // optional region object
 	customList []string   // optional string slice object
 	silent     bool       // if true does not redraw the screen after execution
-	msg        string     // to comunicate back errors
+	msg        string     // to comunicate back to user
 }
 
 type command struct {
 	cmd    cmdFunc   // the command function
 	parser parseFunc // a function to parse command arguments (if needed)
 }
-
 type cmdFunc func(ctx *cmdContext)
-
 type parseFunc func(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (parseFunc, bool)
 
+var cmdStringTables = [2]map[string]command{cmdStringInsertMode, cmdStringNormalMode}
+var cmdKeyTables = [2]map[Key]command{cmdKeyInsertMode, cmdKeyNormalMode}
+
 func lookupStringCmd(m mode, s string) command {
-	c := cmdStringTables[m][s]
-	//if m == insertMode && len(s) == 1 && c.cmd == nil {
-	//c = command{insertChar, nil}
-	//}
-	return c
+	return cmdStringTables[m][s]
 }
 
 func lookupKeyCmd(m mode, key Key) command {
 	return cmdKeyTables[m][key]
 }
 
-var cmdStringTables = [2]map[string]command{cmdStringInsertMode, cmdStringNormalMode}
-var cmdKeyTables = [2]map[Key]command{cmdKeyInsertMode, cmdKeyNormalMode}
-
 var cmdKeyNormalMode = map[Key]command{
-	//KeyEsc:        command{exitProgram, nil},
 	KeyCtrlS: command{saveToFile, nil},
+	KeyCtrlX: command{exitProgram, nil},
 }
 
 // commands should be at most two chars to avoid risk of over-shadowing one char
@@ -77,8 +71,7 @@ var cmdStringNormalMode = map[string]command{
 	"L":  command{moveCursorTo, nil},
 	"gg": command{moveCursorTo, nil},
 	"G":  command{moveCursorTo, nil},
-	//"dgg": command{deleteToStart, nil},
-	"dq": command{deleteToEnd, nil},
+	"m":  command{recordMacro, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{

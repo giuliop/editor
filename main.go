@@ -5,8 +5,15 @@ import "os"
 
 var (
 	be   backend           // the open buffers collection backend
+	r    = register{}      // holds all global lists: macros...
 	exit = make(chan bool) // a channel to signal quitting the program
 )
+
+var debug *debugLogger
+
+type register struct {
+	macro *macroRegister
+}
 
 // check panics if passed an error
 func check(e error) {
@@ -44,13 +51,24 @@ func initFrontEnd(activeBuf *buffer) (UI, error) {
 	return ui, err
 }
 
-func main() {
+func init() {
 	// initialize debug logging, available through a logger called debug
 	debug = initDebug()
-	defer debug.stop()
+	// initialize internal engine
+	be = initBackend()
+	// initialize the global registers
+	r = initRegisters()
+}
 
+func initRegisters() register {
+	r := register{}
+	r.macro = &macroRegister{&keyLogger{}, [10][]Keypress{}}
+	return r
+}
+
+func main() {
+	defer debug.stop()
 	// initialize internal engine and create an empty buffer as current buffer
-	be := initBackend()
 	curBuf := be.open(os.Args[1:])
 
 	// initialize ui frontend with the new empty buffer as active buffer
