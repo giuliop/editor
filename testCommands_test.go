@@ -177,4 +177,7 @@ func _testMotions(samples []string, testKeys []string, expected [][][]*quickmark
 }
 
 func testInsertAppend(t *testing.T) {
+	//b := stringToBuffer(defaultText)
+	//e := newKeyPressEmitter(b)
+	//e.emit
 }
