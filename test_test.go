@@ -5,15 +5,14 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 const TESTFILENAME = "__testFile__"
 
 var (
-	ui       = &testUI{}
 	keys     = make(chan UIEvent, 100)
-	commands = make(chan cmdContext, 100)
+	commands = make(chan cmdContext)
+	done     = make(chan int)
 )
 
 type testUI struct {
@@ -28,17 +27,37 @@ func (u *testUI) CurrentBuffer() *buffer { return nil }
 func (u *testUI) userMessage(s string)   {}
 
 func TestMain(m *testing.M) {
-	debug.Println("New test run\n")
+	debug.Println("\nNew test run\n")
 
 	stringToFile(defaultText, TESTFILENAME)
-	ui.curBuf = be.open([]string{TESTFILENAME})
+	ui = &testUI{}
+	ui.Init(be.open([]string{TESTFILENAME}))
 
-	go manageKeypress(ui, keys, commands)
-	go executeCommands(ui, commands)
+	go manageKeypress(keys, commands)
+	go executeTestCommands(commands)
 
-	defer func() {}()
-	debug.stop()
+	defer cleanup()
 	os.Exit(m.Run())
+}
+
+func cleanup() {
+	debug.stop()
+}
+
+func executeTestCommands(cmds chan cmdContext) {
+	defer cleanupOnError()
+	for {
+		c := <-cmds
+		c.cmd(&c)
+		// we put the number of keypresses consumed on channel done
+		keys := len(c.cmdString) + len(c.argString)
+		if len(c.cmdString) == 0 {
+			// we add one since it was a special key
+			keys++
+		}
+		done <- keys
+		cmds <- c
+	}
 }
 
 type keypressEmitter struct {
@@ -51,17 +70,22 @@ func newKeyPressEmitter(b *buffer) *keypressEmitter {
 }
 
 func (e keypressEmitter) emit(a ...interface{}) {
+	keys := 0
 	for _, x := range a {
 		switch x.(type) {
 		case string:
 			stringToEvents(e.b, x.(string))
+			keys += len(x.(string))
 		case Key:
 			keyToEvents(e.b, x.(Key))
+			keys += 1
 		default:
 			panic("Unrecognized keypress type")
 		}
-		// yield to let commands run before new events
-		time.Sleep(1 * time.Millisecond)
+	}
+	// now we wait until all the commands are done
+	for keys > 0 {
+		keys -= <-done
 	}
 }
 

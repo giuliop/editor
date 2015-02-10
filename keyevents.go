@@ -9,18 +9,32 @@ import (
 
 const keypressTimeout = 750 * time.Millisecond
 
-func executeCommands(ui UI, cmds chan cmdContext) {
+func pushCmd(c command, ctx *cmdContext, cmds chan cmdContext) parseFunc {
+	if c.cmd != nil {
+		ctx.cmd = c.cmd
+		if c.parser == nil {
+			cmds <- *ctx
+			<-cmds
+		}
+	}
+	ctx.customList = nil
+	return c.parser
+}
+
+func executeCommands(cmds chan cmdContext) {
 	defer cleanupOnError()
-	for c := range cmds {
+	for {
+		c := <-cmds
 		c.cmd(&c)
 		if !c.silent {
 			ui.userMessage(c.msg)
 			ui.Draw()
 		}
+		cmds <- c
 	}
 }
 
-func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
+func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 	defer cleanupOnError()
 	var (
 		nextParser     parseFunc = parseAction
@@ -45,7 +59,7 @@ func manageKeypress(ui UI, keys chan UIEvent, commands chan cmdContext) {
 				ev.Type = UIEventTimeout
 			}
 		}
-		nextParser, reconsumeEvent = nextParser(&ev, ctx, commands)
+		nextParser, reconsumeEvent = nextParser(&ev, ctx, cmds)
 		if reconsumeEvent {
 			reprocess <- ev
 		}
@@ -119,17 +133,6 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			return parseAction, false
 		}
 	}
-}
-
-func pushCmd(c command, ctx *cmdContext, cmds chan cmdContext) parseFunc {
-	if c.cmd != nil {
-		ctx.cmd = c.cmd
-		if c.parser == nil {
-			cmds <- *ctx
-		}
-	}
-	ctx.customList = nil
-	return c.parser
 }
 
 func matchCommand(mod mode, s string, list []string) (

@@ -47,8 +47,8 @@ func TestLineMotions(t *testing.T) {
 		a.assert("gg", "cs.line", b.cs.line, 0)
 		// test '$', '0', 'L', 'H',
 		e.emit("$")
-		exp := len(b.text[b.cs.line]) - 2
-		if b.cs.atEmptyLine() {
+		exp := len(b.text[0]) - 2
+		if exp < 0 {
 			exp = 0
 		}
 		a.assert("$", "cs.pos", b.cs.pos, exp)
@@ -58,7 +58,6 @@ func TestLineMotions(t *testing.T) {
 		a.assert("L", "cs.pos", b.cs.pos, exp)
 		e.emit("H")
 		a.assert("H", "cs.pos", b.cs.pos, 0)
-
 	}
 	if a.failed {
 		for _, m := range a.errMsgs {

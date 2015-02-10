@@ -5,6 +5,7 @@ import "os"
 
 var (
 	be   backend           // the open buffers collection backend
+	ui   UI                // the user interface
 	r    = register{}      // holds all global lists: macros...
 	exit = make(chan bool) // a channel to signal quitting the program
 )
@@ -68,20 +69,19 @@ func initRegisters() register {
 
 func main() {
 	defer debug.stop()
-	// initialize internal engine and create an empty buffer as current buffer
+	// initialize the user interface
 	curBuf := be.open(os.Args[1:])
-
-	// initialize ui frontend with the new empty buffer as active buffer
-	ui, err := initFrontEnd(curBuf)
-	defer ui.Close()
+	var err error
+	ui, err = initFrontEnd(curBuf)
 	check(err)
 	ui.Draw()
+	defer ui.Close()
 
 	//activate channels for keypresses and recognized commands
 	keys := make(chan UIEvent, 100)
-	commands := make(chan cmdContext, 100)
-	go manageKeypress(ui, keys, commands)
-	go executeCommands(ui, commands)
+	commands := make(chan cmdContext)
+	go manageKeypress(keys, commands)
+	go executeCommands(commands)
 
 	// listen for events and route them to appropriate channel
 	uiEvents := make(chan UIEvent, 100)
