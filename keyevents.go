@@ -25,6 +25,8 @@ func pushCmd(ctx *cmdContext, cmds chan cmdContext) {
 	<-cmds
 }
 
+var cmdDone = cmdContext{}
+
 func executeCommands(cmds chan cmdContext) {
 	defer cleanupOnError()
 	for {
@@ -34,7 +36,7 @@ func executeCommands(cmds chan cmdContext) {
 			ui.userMessage(c.msg)
 			ui.Draw()
 		}
-		cmds <- c
+		cmds <- cmdDone
 	}
 }
 

@@ -8,11 +8,21 @@ import (
 )
 
 const TESTFILENAME = "__testFile__"
+const endOfEmission = KeyCtrlBackslash
+
+func init() {
+	cmdKeyInsertMode[endOfEmission] = command{allDoneCmd, nil}
+	cmdKeyNormalMode[endOfEmission] = command{allDoneCmd, nil}
+}
+
+func allDoneCmd(ctx *cmdContext) {
+	allDone <- struct{}{}
+}
 
 var (
 	keys     = make(chan UIEvent, 100)
 	commands = make(chan cmdContext)
-	done     = make(chan int)
+	allDone  = make(chan struct{}) // used this to signal all commands done
 )
 
 type testUI struct {
@@ -49,14 +59,7 @@ func executeTestCommands(cmds chan cmdContext) {
 	for {
 		c := <-cmds
 		c.cmd(&c)
-		// we put the number of keypresses consumed on channel done
-		keys := len(c.cmdString) + len(c.argString)
-		if len(c.cmdString) == 0 {
-			// we add one since it was a special key
-			keys++
-		}
-		done <- keys
-		cmds <- c
+		cmds <- cmdDone
 	}
 }
 
@@ -70,23 +73,18 @@ func newKeyPressEmitter(b *buffer) *keypressEmitter {
 }
 
 func (e keypressEmitter) emit(a ...interface{}) {
-	keys := 0
 	for _, x := range a {
 		switch x.(type) {
 		case string:
 			stringToEvents(e.b, x.(string))
-			keys += len(x.(string))
 		case Key:
 			keyToEvents(e.b, x.(Key))
-			keys += 1
 		default:
 			panic("Unrecognized keypress type")
 		}
 	}
-	// now we wait until all the commands are done
-	for keys > 0 {
-		keys -= <-done
-	}
+	keyToEvents(e.b, endOfEmission)
+	<-allDone
 }
 
 func stringToEvents(b *buffer, s string) {

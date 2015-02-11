@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
+	"unicode/utf8"
 )
 
 type sample struct {
@@ -176,8 +178,86 @@ func _testMotions(samples []string, testKeys []string, expected [][][]*quickmark
 	return a
 }
 
-func testInsertAppend(t *testing.T) {
-	//b := stringToBuffer(defaultText)
-	//e := newKeyPressEmitter(b)
-	//e.emit
+func TestInsert(t *testing.T) {
+	b := stringToBuffer("123")
+	e := newKeyPressEmitter(b)
+	e.emit(KeyCtrlC, "li0")
+	err := equalStrings(bufferToString(b), "1023\n")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestAppend(t *testing.T) {
+	b := stringToBuffer("123")
+	e := newKeyPressEmitter(b)
+	e.emit(KeyCtrlC, "la0")
+	err := equalStrings(bufferToString(b), "1203\n")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestAppendEndOfLine(t *testing.T) {
+	b := stringToBuffer("123")
+	e := newKeyPressEmitter(b)
+	e.emit(KeyCtrlC, "lA0")
+	err := equalStrings(bufferToString(b), "1230\n")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestAppendEndOfLineInsertMode(t *testing.T) {
+	b := stringToBuffer("123")
+	e := newKeyPressEmitter(b)
+	e.emit(KeyCtrlC, "liAA0")
+	err := equalStrings(bufferToString(b), "1230\n")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestMultiInsertAppend(t *testing.T) {
+	b := stringToBuffer(defaultText)
+	e := newKeyPressEmitter(b)
+	e.emit(KeyCtrlC, "l", "l", "A", "g", "g", "g", KeyCtrlC, "j", "h", "h", "h", "h",
+		"h", "l", "i", "c", "A", "A", "v", KeyCtrlC, "j", "i", "c", KeyCtrlC, "j",
+		"j", "a", "d")
+	expected := "" +
+		"   xxx_yyy xxx___yyy xxx_^_ppp  ggg\n" +
+		"func (e keypressEmitter) emit(ca ...interface{}) {v\n" +
+		"c\n" +
+		"   xxx***(((_ciao *** &&& ff.ff  *\n" +
+		"*d\n" +
+		" _ \n" +
+		"non c'e' male, davvero .... \n"
+	err := equalStrings(bufferToString(b), expected)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func equalStrings(actual, expected string) error {
+	count, line, offset := 0, 0, 0
+	for i, c := range actual {
+		if count >= len(expected) {
+			return fmt.Errorf("expected shorter than actual!")
+		}
+		r, size := utf8.DecodeRuneInString(expected[count:])
+		count += size
+		if c != r {
+			debug.Printf("actual\n%v\nexpected\n%v\n", actual, expected)
+			return fmt.Errorf("no match at line %v pos %v, expected %q, found %q",
+				line+1, i-offset, r, c)
+		}
+		if r == '\n' {
+			line++
+			offset = i
+		}
+	}
+	if expected[count:] != "" {
+		return fmt.Errorf("actual shorter than expected!")
+	}
+	return nil
 }

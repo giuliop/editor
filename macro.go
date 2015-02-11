@@ -25,8 +25,10 @@ func (k *keyLogger) record(key Keypress) {
 
 func recordMacro(ctx *cmdContext) {
 	if r.macro.on {
-		r.macro.macros[0] = r.macro.keys
-		debug.Printf("macro:\n%v\n", keypressesToEmitString(r.macro.keys))
+		// save the macro keys removing the last key which is end record key
+		keys := r.macro.keys[:len(r.macro.keys)-1]
+		r.macro.macros[0] = keys
+		debug.Printf("macro:\n%v\n", keypressesToEmitString(keys))
 		r.macro.stop()
 		ctx.msg = "finished recording"
 		return

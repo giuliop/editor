@@ -18,7 +18,9 @@ func initDebug() *debugLogger {
 	check(err)
 	logPrefix := "(debug) "
 	logFlags := log.Ldate + log.Ltime + log.Lshortfile
-	return &debugLogger{log.New(f, logPrefix, logFlags), f}
+	d := &debugLogger{log.New(f, logPrefix, logFlags), f}
+	d.Printf("\nNew Editor run\n\n")
+	return d
 }
 
 func (d *debugLogger) printStack() {
@@ -58,22 +60,25 @@ loop:
 	}
 }
 
+const SPEC_DELIM = "+++"
+
 func keypressesToEmitString(ks []Keypress) string {
 	tokens := []string{}
 	for _, k := range ks {
 		tokens = append(tokens, keyToString(k))
 	}
-	return fmt.Sprintf("(\"%v\")", strings.Join(tokens, "\", \""))
+	s := fmt.Sprintf("(\"%v\")", strings.Join(tokens, "\", \""))
+	s = strings.Replace(s, "\""+SPEC_DELIM, "", -1)
+	return strings.Replace(s, SPEC_DELIM+"\"", "", -1)
 }
 
 func keyToString(k Keypress) string {
 	if k.isSpecial {
 		switch k.Special {
 		case 0x03:
-			return "KeyCtrlC"
+			return SPEC_DELIM + "KeyCtrlC" + SPEC_DELIM
 		default:
-			fatalError(fmt.Errorf("Unknown key %v", k.isSpecial))
-			return ""
+			return "???"
 		}
 	} else {
 		return string(k.Char)
