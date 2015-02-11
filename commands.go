@@ -151,7 +151,7 @@ func moveCursorTo(ctx *cmdContext) {
 		ctx.num = 1
 	}
 	for i := 0; i < ctx.num; i++ {
-		r := ctx.reg(*ctx.point)
+		r, _ := ctx.reg(*ctx.point)
 		*ctx.point = r.end
 	}
 	ctx.point.buf.cs = *ctx.point
@@ -168,8 +168,8 @@ func delete_(ctx *cmdContext) {
 		deleteToEnd(ctx)
 	default:
 		for i := 0; i < ctx.num; i++ {
-			r := ctx.reg(*ctx.point)
-			*ctx.point = be.deleteRegion(r)
+			r, dir := ctx.reg(*ctx.point)
+			*ctx.point = r.delete(dir)
 		}
 	}
 	ctx.point.buf.cs = *ctx.point
@@ -177,13 +177,13 @@ func delete_(ctx *cmdContext) {
 
 func deleteToStart(ctx *cmdContext) {
 	b := ctx.point.buf
-	be.deleteLines(mark{0, 0, b}, *ctx.point)
+	b.deleteLines(mark{0, 0, b}, *ctx.point)
 	b.cs = mark{0, 0, b}
 }
 
 func deleteToEnd(ctx *cmdContext) {
 	b := ctx.point.buf
-	be.deleteLines(*ctx.point, mark{ctx.point.lastLine(), 0, b})
+	b.deleteLines(*ctx.point, mark{ctx.point.lastLine(), 0, b})
 	b.cs = mark{ctx.point.line - 1, 0, b}
 	if b.cs.line < 0 {
 		b.cs.line = 0
@@ -199,32 +199,32 @@ func deleteCharForward(ctx *cmdContext) {
 		ctx.num = 1
 	}
 	for i := 0; i < ctx.num; i++ {
-		be.deleteCharForward(*ctx.point)
+		ctx.point.deleteCharForward()
 		ctx.point.fixPos()
 	}
 }
 
 func deleteCharBackward(ctx *cmdContext) {
-	*ctx.point = be.deleteCharBackward(*ctx.point)
+	*ctx.point = ctx.point.deleteCharBackward()
 }
 
 func insertTab(ctx *cmdContext) {
-	be.insertChar(*ctx.point, '\t')
+	ctx.point.insertChar('\t')
 	ctx.point.moveRight(1)
 }
 
 func insertSpace(ctx *cmdContext) {
-	be.insertChar(*ctx.point, ' ')
+	ctx.point.insertChar(' ')
 	ctx.point.moveRight(1)
 }
 
 func insertNewLine(ctx *cmdContext) {
-	be.insertNewLineChar(*ctx.point)
+	ctx.point.insertNewLineChar()
 	ctx.point.set(ctx.point.line+1, 0)
 }
 
 func insertChar(ctx *cmdContext) {
-	be.insertChar(*ctx.point, ctx.char)
+	ctx.point.insertChar(ctx.char)
 	ctx.point.moveRight(1)
 }
 

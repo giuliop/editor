@@ -261,3 +261,21 @@ func equalStrings(actual, expected string) error {
 	}
 	return nil
 }
+
+func XXXTestDeleteToEndAndStartOfLine(t *testing.T) {
+	b := stringToBuffer(defaultText)
+	e := newKeyPressEmitter(b)
+	e.emit()
+	expected := "" +
+		"   xxx_yyy xxx___yyy xxx_^_ppp  ggg\n" +
+		"func (e keypressEmitter) emit(ca ...interface{}) {v\n" +
+		"c\n" +
+		"   xxx***(((_ciao *** &&& ff.ff  *\n" +
+		"*d\n" +
+		" _ \n" +
+		"non c'e' male, davvero .... \n"
+	err := equalStrings(bufferToString(b), expected)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}

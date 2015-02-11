@@ -148,7 +148,7 @@ func stringToBuffer(s string) *buffer {
 
 func bufferToString(b *buffer) string {
 	s := ""
-	for _, line := range be.text(b) {
+	for _, line := range b.text {
 		s += string(line)
 	}
 	return s

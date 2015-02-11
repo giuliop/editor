@@ -13,7 +13,7 @@ type region struct {
 // a regionFunc returns a region, that is a start mark and an end mark
 // while a text object is obviously a region, motions are as well (with the
 // current cursor position as start mark)
-type regionFunc func(m mark) region
+type regionFunc func(m mark) (region, direction)
 
 var motions = map[string]regionFunc{
 	"e":  toWordEnd,
@@ -84,47 +84,47 @@ func doMotion(m *mark, atMotion func() bool, moveMark func(n int)) region {
 	return region{m2, *m}
 }
 
-func toLineEnd(m mark) region {
+func toLineEnd(m mark) (region, direction) {
 	m2 := mark{m.line, m.maxCursPos(), m.buf}
-	return region{m, m2}
+	return region{m, m2}, right
 }
 
-func toLineStart(m mark) region {
+func toLineStart(m mark) (region, direction) {
 	m2 := mark{m.line, 0, m.buf}
-	return region{m, m2}
+	return region{m, m2}, left
 }
 
-func toLastLine(m mark) region {
+func toLastLine(m mark) (region, direction) {
 	m2 := mark{m.lastLine(), 0, m.buf}
-	return region{m, m2}
+	return region{m, m2}, right
 }
 
-func toFirstLine(m mark) region {
+func toFirstLine(m mark) (region, direction) {
 	m2 := mark{0, 0, m.buf}
-	return region{m, m2}
+	return region{m, m2}, left
 }
 
-func toWORDEnd(m mark) region {
-	return doMotion(&m, m.atEndOfWORD, m.moveRight)
+func toWORDEnd(m mark) (region, direction) {
+	return doMotion(&m, m.atEndOfWORD, m.moveRight), right
 }
 
-func toWordEnd(m mark) region {
-	return doMotion(&m, m.atEndOfWord, m.moveRight)
+func toWordEnd(m mark) (region, direction) {
+	return doMotion(&m, m.atEndOfWord, m.moveRight), right
 }
 
-func toNextWORDStart(m mark) region {
-	return doMotion(&m, m.atStartOfWORD, m.moveRight)
+func toNextWORDStart(m mark) (region, direction) {
+	return doMotion(&m, m.atStartOfWORD, m.moveRight), right
 }
 
-func toNextWordStart(m mark) region {
-	return doMotion(&m, m.atStartOfWord, m.moveRight)
+func toNextWordStart(m mark) (region, direction) {
+	return doMotion(&m, m.atStartOfWord, m.moveRight), right
 }
-func toWORDStart(m mark) region {
-	return doMotion(&m, m.atStartOfWORD, m.moveLeft)
+func toWORDStart(m mark) (region, direction) {
+	return doMotion(&m, m.atStartOfWORD, m.moveLeft), left
 }
 
-func toWordStart(m mark) region {
-	return doMotion(&m, m.atStartOfWord, m.moveLeft)
+func toWordStart(m mark) (region, direction) {
+	return doMotion(&m, m.atStartOfWord, m.moveLeft), left
 }
 
 // a non-space followed by either a space or newline
@@ -169,7 +169,7 @@ func findRight(m mark, r *regexp.Regexp) mark {
 		}
 		offset = 0
 	}
-	return be.lastTextCharPos(m)
+	return m.lastTextCharPos()
 }
 
 func findLeft(m mark, r *regexp.Regexp) mark {
@@ -185,5 +185,5 @@ func findLeft(m mark, r *regexp.Regexp) mark {
 			return mark{ln, pos[2], m.buf}
 		}
 	}
-	return be.firstTextCharPos(m)
+	return m.firstTextCharPos()
 }

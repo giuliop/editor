@@ -18,6 +18,10 @@ func (m *mark) atLastLine() bool {
 	return m.line == m.lastLine()
 }
 
+func (m *mark) lastLine() int {
+	return len(m.buf.text) - 1
+}
+
 func (m *mark) atLineStart() bool {
 	return m.pos == 0
 }
@@ -45,21 +49,19 @@ func (m *mark) lastCharPos() int {
 	return len(m.buf.text[m.line]) - 2
 }
 
+// maxCursPos returns the maximum position the cursor might be on, which is the
+// newline char in insert mode or for empty lines and the last char for non empty
+// lines outside of insert mode
 func (m *mark) maxCursPos() int {
-	max := m.lastCharPos() + 1
-	// in normal mode we want the cursor one position to the left, unless it is an emptypreve
-	if m.buf.mod == normalMode && max > 0 {
-		max -= 1
+	max := m.lastCharPos()
+	if m.buf.mod == insertMode || max < 0 {
+		max++
 	}
 	return max
 }
 
 func (m *mark) atEmptyLine() bool {
 	return m.lastCharPos() == -1
-}
-
-func (m *mark) lastLine() int {
-	return len(m.buf.text) - 1
 }
 
 // fixPos checks that the mark is within the line, if it is over the end of the line
@@ -168,7 +170,7 @@ func orderMarks(m1, m2 mark) (mark, mark) {
 	}
 }
 
-// deltaChars returns the distance in number of  chars (including newlines)
+// deltaChars returns the distance in number of chars (including newlines)
 // between m and m2; the value is negative if m2 is before m and 0 if they overlap
 // the function assume the marks are on the same buffer
 func (m *mark) deltaChars(m2 mark) (delta int) {
