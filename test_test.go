@@ -155,8 +155,10 @@ func bufferToString(b *buffer) string {
 }
 
 func TestStringToBufferToString(t *testing.T) {
-	if defaultText != bufferToString(stringToBuffer(defaultText)) {
-		t.Fail()
+	for _, s := range samples {
+		if s != bufferToString(stringToBuffer(s)) {
+			t.Fail()
+		}
 	}
 }
 
@@ -170,4 +172,17 @@ func TestStringToFileToBufferToString(t *testing.T) {
 	if s != bufferToString(b) {
 		t.Fail()
 	}
+}
+
+func recordTestMacro(ctx *cmdContext) {
+	if r.macro.on {
+		// save the macro keys removing the last key which is end record key
+		keys := r.macro.keys[:len(r.macro.keys)-1]
+		r.macro.macros[0] = keys
+		r.macro.stop()
+		ctx.msg = "finished recording"
+		return
+	}
+	r.macro.start()
+	ctx.msg = "started macro recording"
 }

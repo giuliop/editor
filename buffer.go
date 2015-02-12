@@ -152,7 +152,7 @@ func (b *buffer) deleteLines(m1, m2 mark) int {
 func (r region) delete(dir direction) mark {
 	var fr, to = orderMarks(r.start, r.end)
 	// if we delete towards right we also want to delete the end mark's char
-	if dir == right {
+	if dir == right && !to.atEmptyLine() {
 		to.pos++
 	}
 	b := fr.buf

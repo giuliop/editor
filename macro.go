@@ -27,12 +27,21 @@ func recordMacro(ctx *cmdContext) {
 	if r.macro.on {
 		// save the macro keys removing the last key which is end record key
 		keys := r.macro.keys[:len(r.macro.keys)-1]
-		r.macro.macros[0] = keys
 		debug.Printf("macro:\n%v\n", keypressesToEmitString(keys))
+		debug.Printf("buffer:\n%v\n", _bufferToString(ctx.point.buf))
+		r.macro.macros[0] = keys
 		r.macro.stop()
 		ctx.msg = "finished recording"
 		return
 	}
 	r.macro.start()
 	ctx.msg = "started macro recording"
+}
+
+func _bufferToString(b *buffer) string {
+	s := ""
+	for _, line := range b.text {
+		s += string(line)
+	}
+	return s
 }
