@@ -42,7 +42,7 @@ func TestLineMotions(t *testing.T) {
 		// test 'gg' and 'G'
 		b := stringToBuffer(s)
 		e := newKeyPressEmitter(b)
-		e.emit(KeyCtrlC, "G")
+		e.emit("G")
 		a.assert("G", "cs.pos", b.cs.pos, 0)
 		a.assert("G", "cs.line", b.cs.line, len(b.text)-1)
 		e.emit("gg")
@@ -153,7 +153,6 @@ func _testMotions(samples []string, testKeys []string, expected [][][]*quickmark
 	for _s, s := range samples {
 		b := stringToBuffer(s)
 		e := newKeyPressEmitter(b)
-		e.emit(KeyCtrlC)
 		for _k, k := range testKeys {
 			for i, m := range expected[_k][_s] {
 				e.emit(k)
@@ -172,7 +171,7 @@ func _testMotions(samples []string, testKeys []string, expected [][][]*quickmark
 func TestInsert(t *testing.T) {
 	b := stringToBuffer("123")
 	e := newKeyPressEmitter(b)
-	e.emit(KeyCtrlC, "li0")
+	e.emit("li0")
 	err := equalStrings(bufferToString(b), "1023\n")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -182,7 +181,7 @@ func TestInsert(t *testing.T) {
 func TestAppend(t *testing.T) {
 	b := stringToBuffer("123")
 	e := newKeyPressEmitter(b)
-	e.emit(KeyCtrlC, "la0")
+	e.emit("la0")
 	err := equalStrings(bufferToString(b), "1203\n")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -192,7 +191,7 @@ func TestAppend(t *testing.T) {
 func TestAppendEndOfLine(t *testing.T) {
 	b := stringToBuffer("123")
 	e := newKeyPressEmitter(b)
-	e.emit(KeyCtrlC, "lA0")
+	e.emit("lA0")
 	err := equalStrings(bufferToString(b), "1230\n")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -202,7 +201,7 @@ func TestAppendEndOfLine(t *testing.T) {
 func TestAppendEndOfLineInsertMode(t *testing.T) {
 	b := stringToBuffer("123")
 	e := newKeyPressEmitter(b)
-	e.emit(KeyCtrlC, "liAA0")
+	e.emit("liAA0")
 	err := equalStrings(bufferToString(b), "1230\n")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -213,14 +212,15 @@ func equalStrings(actual, expected string) error {
 	count, line, offset := 0, 0, 0
 	for i, c := range actual {
 		if count >= len(expected) {
-			return fmt.Errorf("expected shorter than actual!")
+			return fmt.Errorf("expected shorter than actual!\nactual:\n%q\n\n"+
+				"expected:\n%q\n\n", actual, expected)
 		}
 		r, size := utf8.DecodeRuneInString(expected[count:])
 		count += size
 		if c != r {
-			debug.Printf("actual\n%v\nexpected\n%v\n", actual, expected)
-			return fmt.Errorf("no match at line %v pos %v, expected %q, found %q",
-				line+1, i-offset, r, c)
+			return fmt.Errorf("no match at line %v pos %v, expected %q, found %q"+
+				"in:\nactual\n%q\nexpected\n%q\n", line+1, i-offset, r, c, actual,
+				expected)
 		}
 		if r == '\n' {
 			line++
@@ -228,7 +228,8 @@ func equalStrings(actual, expected string) error {
 		}
 	}
 	if expected[count:] != "" {
-		return fmt.Errorf("actual shorter than expected!")
+		return fmt.Errorf("actual shorter than expected!\nactual:\n%q\n\n"+
+			"expected:\n%q\n\n", actual, expected)
 	}
 	return nil
 }
@@ -236,9 +237,8 @@ func equalStrings(actual, expected string) error {
 func TestMultiInsertAppend(t *testing.T) {
 	b := stringToBuffer(defaultText)
 	e := newKeyPressEmitter(b)
-	e.emit(KeyCtrlC, "l", "l", "A", "g", "g", "g", KeyCtrlC, "j", "h", "h", "h", "h",
-		"h", "l", "i", "c", "A", "A", "v", KeyCtrlC, "j", "i", "c", KeyCtrlC, "j",
-		"j", "a", "d")
+	e.emit("2l", "A", "ggg", KeyCtrlC, "j", "5h", "l", "i", "c",
+		"A", "A", "v", KeyCtrlC, "j", "i", "c", KeyCtrlC, "2j", "a", "d")
 	expected := "" +
 		"   xxx_yyy xxx___yyy xxx_^_ppp  ggg\n" +
 		"func (e keypressEmitter) emit(ca ...interface{}) {v\n" +
@@ -256,7 +256,8 @@ func TestMultiInsertAppend(t *testing.T) {
 func TestDeleteToEndAndStartOfLine(t *testing.T) {
 	b := stringToBuffer(defaultText)
 	e := newKeyPressEmitter(b)
-	e.emit(KeyCtrlC, "j", "5l", "d", "L", "j", "d", "L", "d", "H", "j", "9l", "d", "H", "j", "d", "H", "d", "L", "2j", "22l", "d", "L", "d", "H")
+	e.emit("j", "5l", "d", "L", "j", "d", "L", "d", "H", "j", "9l",
+		"d", "H", "j", "d", "H", "d", "L", "2j", "22l", "d", "L", "d", "H")
 	expected := "" +
 		"   xxx_yyy xxx___yyy xxx_^_ppp  \n" +
 		"func \n" +
@@ -269,4 +270,79 @@ func TestDeleteToEndAndStartOfLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+}
+
+func TestDeleteToNextWordStart(t *testing.T) {
+	b := stringToBuffer(defaultText)
+	e := newKeyPressEmitter(b)
+	e.emit("w", "dw", "12l", "2h", "dw", "j", "2h", "dw", "2j", "k", "w",
+		"k", "dw", "j", "4l", "3h", "dw", "k", "w", "k", "dw", "j", "10e", "4h", "6l",
+		"dw")
+	expected := "" +
+		"   xxx___yyy ^_ppp  \n" +
+		"func (e key) emit(a ...interface{}) {\n" +
+		"xxx***(((_ciao *** &&& ff.ff  *\n" +
+		"_ \n" +
+		"non c'e' male, davvero ....\n"
+	err := equalStrings(bufferToString(b), expected)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+type _cmd []interface{}
+
+func TestDeleteToWordEnd(t *testing.T) {
+	num := 8
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+	str[0] = "hello dude\n"
+	cmd[0] = _cmd{"de"}
+	exp[0] = " dude\n"
+
+	str[1] = "\n"
+	cmd[1] = _cmd{"de"}
+	exp[1] = "\n"
+
+	str[2] = "hello dude\n"
+	cmd[2] = _cmd{"w", "de"}
+	exp[2] = "hello \n"
+
+	str[3] = "var xxx_yyy\n"
+	cmd[3] = _cmd{"w", "l", "de"}
+	exp[3] = "var x\n"
+
+	str[4] = "var xxx^yyy\n"
+	cmd[4] = _cmd{"w", "l", "de"}
+	exp[4] = "var x^yyy\n"
+
+	str[5] = "var xxx^yyy\n"
+	cmd[5] = _cmd{"w", "l", "de"}
+	exp[5] = "var x^yyy\n"
+
+	str[6] = "1\n2\n3\n"
+	cmd[6] = _cmd{"de"}
+	exp[6] = "3\n"
+
+	str[7] = "Hi  \n  dude\n"
+	cmd[7] = _cmd{"2l", "de"}
+	exp[7] = "Hi\n"
+
+	err := _testStrings(str, exp, cmd)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func _testStrings(actuals, expected []string, commands [][]interface{}) error {
+	for i, a := range actuals {
+		b := stringToBuffer(a)
+		e := newKeyPressEmitter(b)
+		e.emit(commands[i]...)
+		err := equalStrings(bufferToString(b), expected[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

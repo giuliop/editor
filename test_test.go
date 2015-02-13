@@ -80,6 +80,7 @@ func (e keypressEmitter) emit(a ...interface{}) {
 		case Key:
 			keyToEvents(e.b, x.(Key))
 		default:
+			debug.Println(x)
 			panic("Unrecognized keypress type")
 		}
 	}
@@ -143,6 +144,7 @@ func stringToLines(s string) []line {
 func stringToBuffer(s string) *buffer {
 	b := be.newBuffer("")
 	b.text = stringToLines(s)
+	b.mod = normalMode
 	return b
 }
 

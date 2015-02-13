@@ -170,7 +170,7 @@ func (r region) delete(dir direction) mark {
 		}
 		switch {
 		case fr.pos > 0:
-			b.text[fr.line] = b.text[fr.line][:fr.pos]
+			b.text[fr.line] = append(b.text[fr.line][:fr.pos], '\n')
 		case fr.totalLines() == 1:
 			b.text[fr.line] = newLine()
 		default:

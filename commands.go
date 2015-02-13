@@ -169,10 +169,14 @@ func delete_(ctx *cmdContext) {
 	default:
 		for i := 0; i < ctx.num; i++ {
 			r, dir := ctx.reg(*ctx.point)
+			if (ctx.argString == "W" || ctx.argString == "w") &&
+				!r.end.atLastTextChar() {
+				r.end.pos--
+			}
 			*ctx.point = r.delete(dir)
 		}
+		ctx.point.buf.cs = *ctx.point
 	}
-	ctx.point.buf.cs = *ctx.point
 }
 
 func deleteToStart(ctx *cmdContext) {
