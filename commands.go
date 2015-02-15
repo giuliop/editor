@@ -175,7 +175,7 @@ func deleteLine(ctx *cmdContext) {
 	// add undo info
 	start, end := mark{p.line, 0, p.buf}, mark{toline, 0, p.buf}
 	end.pos = end.lineEndPos()
-	r.changes.add(*ctx, undoContext{undoDelete, start.copy(end), start, mark{}})
+	p.buf.changeList.add(*ctx, undoContext{undoDelete, start.copy(end), start, mark{}})
 
 	p.buf.deleteLines(*p, mark{toline, 0, p.buf})
 	if p.line > p.maxLine() {

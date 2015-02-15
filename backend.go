@@ -45,8 +45,9 @@ func (be *backend) open(filenames []string) *buffer {
 // saving to file
 func (be *backend) newBuffer(name string) *buffer {
 	b := &buffer{
-		text: make([]line, 1, 20),
-		name: name,
+		text:       make([]line, 1, 20),
+		name:       name,
+		changeList: changeList{ops: make([]bufferChange, 1)},
 	}
 	b.cs = newMark(b)
 	b.text[0] = newLine()

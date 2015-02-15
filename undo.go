@@ -4,7 +4,7 @@ import "fmt"
 
 const MAX_UNDO = 10000
 
-type changeRegister struct {
+type changeList struct {
 	ops      []bufferChange
 	current  int  // the position of the next op to undo (0 if none)
 	total    int  // the total number of actions in the register
@@ -31,7 +31,7 @@ type bufferChange struct {
 	undo undoContext
 }
 
-func (c *changeRegister) add(redo cmdContext, undo undoContext) {
+func (c *changeList) add(redo cmdContext, undo undoContext) {
 	if !c.redoMode {
 		if c.current == MAX_UNDO {
 			c.ops = c.ops[1:]
@@ -42,7 +42,7 @@ func (c *changeRegister) add(redo cmdContext, undo undoContext) {
 	}
 }
 
-func (c *changeRegister) undo() string {
+func (c *changeList) undo() string {
 	if c.current == 0 {
 		return "No more changes to undo"
 	}
@@ -61,7 +61,7 @@ func (c *changeRegister) undo() string {
 	return fmt.Sprintf("undid change #%v of %v", c.current, c.total)
 }
 
-func (c *changeRegister) redo() string {
+func (c *changeList) redo() string {
 	c.redoMode = true
 	if c.current == len(c.ops)-1 {
 		return "Already at latest change"
@@ -71,8 +71,6 @@ func (c *changeRegister) redo() string {
 	p := *ctx.point
 	ctx.point = &p
 	pushCmd(&ctx)
-	debug.Println(ctx.point)
-	debug.Println(c.ops[c.current].redo.point)
 	ctx.point.buf.cs = *ctx.point
 	c.redoMode = false
 	return fmt.Sprintf("redid change #%v of %v", c.current, c.total)
@@ -80,13 +78,13 @@ func (c *changeRegister) redo() string {
 
 func undo(ctx *cmdContext) {
 	for i := 0; i < ctx.num; i++ {
-		ctx.msg = r.changes.undo()
+		ctx.msg = ctx.point.buf.changeList.undo()
 	}
 }
 
 func redo(ctx *cmdContext) {
 	for i := 0; i < ctx.num; i++ {
-		ctx.msg = r.changes.redo()
+		ctx.msg = ctx.point.buf.changeList.redo()
 	}
 }
 

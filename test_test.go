@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 	ui.Init(be.open([]string{TESTFILENAME}))
 
 	go manageKeypress(keys, commands)
-	go executeTestCommands(commands)
+	go executeCommands(commands)
 
 	defer cleanup()
 	os.Exit(m.Run())
@@ -52,15 +52,6 @@ func TestMain(m *testing.M) {
 
 func cleanup() {
 	debug.stop()
-}
-
-func executeTestCommands(cmds chan cmdContext) {
-	defer cleanupOnError()
-	for {
-		ctx := <-cmds
-		ctx.cmd(&ctx)
-		ctx.cmdChans.done <- cmdDone
-	}
 }
 
 type keypressEmitter struct {

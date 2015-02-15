@@ -581,3 +581,36 @@ func TestDeleteLine(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 }
+
+func TestUndoRedoDeleteLine(t *testing.T) {
+	num := 5
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+
+	str[0] = "one two\nthree four five\nsix\n"
+	cmd[0] = _cmd{"2j", "2dd", "u"}
+	exp[0] = "one two\nthree four five\nsix\n"
+
+	str[1] = "one two\nthree four five\nsix\n"
+	cmd[1] = _cmd{"G", "dd", "dd", "u"}
+	exp[1] = "one two\nthree four five\n"
+
+	str[2] = "one two\nthree four five\nsix\n"
+	cmd[2] = _cmd{"GL", "dd", "u", KeyCtrlR, "u", KeyCtrlR, "u", KeyCtrlR}
+	exp[2] = "one two\nthree four five\n"
+
+	str[3] = "one two\nthree four five\nsix\n"
+	cmd[3] = _cmd{"GL", "dd", "dd", "dd", "u", "u", "u", KeyCtrlR, KeyCtrlR, KeyCtrlR}
+	exp[3] = "\n"
+
+	str[4] = "one two\nthree four five\nsix\n"
+	cmd[4] = _cmd{"GL", "dd", "dd", "dd", "u", "u", "u", "u", "u", KeyCtrlR, KeyCtrlR,
+		KeyCtrlR, KeyCtrlR}
+	exp[4] = "\n"
+
+	err := _testStrings(str, exp, cmd)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+}

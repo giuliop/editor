@@ -15,6 +15,8 @@ type buffer struct {
 	filename string
 	fileSync time.Time
 	modified bool
+	// TODO make it file based
+	changeList changeList
 }
 
 // line represent a line in a buffer
@@ -172,14 +174,19 @@ func (m mark) insertText(text []line) {
 		return
 	}
 	b := m.buf
+	emptyBuf := len(b.text) == 1 && b.text[0][0] == '\n'
 	if m.line > m.maxLine() {
 		b.text = append(b.text, line{})
 	}
-	suffix := append(line{}, b.text[m.line][m.pos:]...)
+	suffix := line{}
+	if !emptyBuf {
+		suffix = append(suffix, b.text[m.line][m.pos:]...)
+	}
 	b.text[m.line] = append(b.text[m.line][:m.pos], text[0]...)
 	seg1 := b.text[:m.line+1]
 	seg2 := text[1:]
 	seg3 := b.text[m.line+1:]
+	//debug.Printf("seg3 %q, len %v", seg3, len(seg3))
 	lastline := text[len(text)-1]
 	if len(suffix) > 0 {
 		if lastline[len(lastline)-1] != '\n' {
@@ -188,6 +195,9 @@ func (m mark) insertText(text []line) {
 			seg3 = append([]line{suffix}, seg3...)
 		}
 	}
+	//debug.Printf("seg1 %q, len %v", seg1, len(seg1))
+	//debug.Printf("seg2 %q, len %v", seg2, len(seg2))
+	//debug.Printf("seg3 %q, len %v", seg3, len(seg3))
 	b.text = append(seg1, append(seg2, seg3...)...)
 }
 

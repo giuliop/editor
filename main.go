@@ -14,8 +14,7 @@ var (
 var debug *debugLogger
 
 type register struct {
-	macros  *macroRegister
-	changes *changeRegister
+	macros *macroRegister
 }
 
 // check panics if passed an error
@@ -67,8 +66,6 @@ func init() {
 func initRegisters() register {
 	r := register{}
 	r.macros = &macroRegister{&keyLogger{}, [10][]Keypress{}}
-	// TODO make it buffer specific (and file based)
-	r.changes = &changeRegister{ops: make([]bufferChange, 1)}
 	return r
 }
 
