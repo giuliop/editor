@@ -4,16 +4,18 @@ package main
 import "os"
 
 var (
-	be   backend           // the open buffers collection backend
-	ui   UI                // the user interface
-	r    = register{}      // holds all global lists: macros...
-	exit = make(chan bool) // a channel to signal quitting the program
+	be   backend                    // the open buffers collection backend
+	ui   UI                         // the user interface
+	r    = register{}               // holds all global lists: macros...
+	exit = make(chan bool)          // to command exiting the program
+	wait = make(chan struct{}, 100) // for async operations that must end before exit
 )
 
 var debug *debugLogger
 
 type register struct {
-	macro *macroRegister
+	macros  *macroRegister
+	changes *changeRegister
 }
 
 // check panics if passed an error
@@ -25,6 +27,7 @@ func check(e error) {
 
 func forceExit() {
 	debug.Print(" * Force Exit * \n\n")
+	debug.printStack()
 	//debug.Printf("%+v", *ctx)
 	exit <- true
 }
@@ -63,12 +66,20 @@ func init() {
 
 func initRegisters() register {
 	r := register{}
-	r.macro = &macroRegister{&keyLogger{}, [10][]Keypress{}}
+	r.macros = &macroRegister{&keyLogger{}, [10][]Keypress{}}
+	// TODO make it buffer specific (and file based)
+	r.changes = &changeRegister{ops: make([]bufferChange, 1)}
 	return r
+}
+
+type cmdStack struct {
+	do   chan cmdContext
+	done chan struct{}
 }
 
 func main() {
 	defer debug.stop()
+	defer cleanupOnError()
 	// initialize the user interface
 	curBuf := be.open(os.Args[1:])
 	var err error
@@ -79,7 +90,7 @@ func main() {
 
 	//activate channels for keypresses and recognized commands
 	keys := make(chan UIEvent, 100)
-	commands := make(chan cmdContext)
+	commands := make(chan cmdContext, 100)
 	go manageKeypress(keys, commands)
 	go executeCommands(commands)
 

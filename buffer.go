@@ -156,42 +156,52 @@ func (r region) delete(dir direction) mark {
 		to.pos++
 	}
 	b := fr.buf
-	if fr.line == to.line {
-		b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[fr.line][to.pos:]...)
-	} else {
-		if to.line > fr.line+1 {
-			to.line -= b.deleteLines(mark{fr.line + 1, 0, b}, mark{to.line - 1, 0, b})
-		}
-		//delete required chars from fr and to lines; if then empty delete them
-		// making sure at least one line is left in the buffer
-		b.text[to.line] = b.text[to.line][to.pos:]
-		if to.atEmptyLine() {
-			to.deleteLine()
-		}
-		switch {
-		case fr.pos > 0:
-			b.text[fr.line] = append(b.text[fr.line][:fr.pos], '\n')
-		case fr.totalLines() == 1:
-			b.text[fr.line] = newLine()
-		default:
+	b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[to.line][to.pos:]...)
+	if to.line > fr.line {
+		to.line -= b.deleteLines(mark{fr.line + 1, 0, b}, to)
+		if fr.atEmptyLine() && fr.maxLine() > 0 {
 			fr.deleteLine()
-			if fr.line == fr.totalLines() {
-				fr.line -= 1
-			}
 		}
 	}
 	fr.fixPos()
 	return fr
 }
 
-func (m mark) lastTextCharPos() mark {
-	m2 := mark{m.lastLine(), 0, m.buf}
-	m2.pos = m2.lastCharPos()
-	m2.fixPos()
-	return m2
+func (m mark) insertText(text []line) {
+	if len(text) == 0 {
+		return
+	}
+	b := m.buf
+	if m.line > m.maxLine() {
+		b.text = append(b.text, line{})
+	}
+	suffix := append(line{}, b.text[m.line][m.pos:]...)
+	b.text[m.line] = append(b.text[m.line][:m.pos], text[0]...)
+	seg1 := b.text[:m.line+1]
+	seg2 := text[1:]
+	seg3 := b.text[m.line+1:]
+	lastline := text[len(text)-1]
+	if len(suffix) > 0 {
+		if lastline[len(lastline)-1] != '\n' {
+			seg2[len(seg2)-1] = append(seg2[len(seg2)-1], suffix...)
+		} else {
+			seg3 = append([]line{suffix}, seg3...)
+		}
+	}
+	b.text = append(seg1, append(seg2, seg3...)...)
 }
 
-func (m mark) firstTextCharPos() mark {
-	m2 := mark{0, 0, m.buf}
-	return m2
+// copy copies and return the text between the two marks included
+func (from mark) copy(to mark) (text []line) {
+	start, end := orderMarks(from, to)
+	if start.line == end.line {
+		text = append(text, start.buf.text[start.line][start.pos:end.pos+1])
+		return text
+	}
+	text = append(text, start.buf.text[start.line][start.pos:])
+	for i := start.line + 1; i < end.line; i++ {
+		text = append(text, start.buf.text[i])
+	}
+	text = append(text, start.buf.text[end.line][:end.pos+1])
+	return text
 }

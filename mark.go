@@ -60,6 +60,11 @@ func (m *mark) maxCursPos() int {
 	return max
 }
 
+// lineEndPos return the position of the newline char at the end of the line
+func (m mark) lineEndPos() int {
+	return len(m.buf.text[m.line]) - 1
+}
+
 func (m *mark) atEmptyLine() bool {
 	return m.lastCharPos() == -1
 }
@@ -190,6 +195,18 @@ func (m *mark) deltaChars(m2 mark) (delta int) {
 	return delta
 }
 
-func (m *mark) totalLines() int {
-	return len(m.buf.text)
+func (m *mark) maxLine() int {
+	return len(m.buf.text) - 1
+}
+
+func (m mark) lastTextCharPos() mark {
+	m2 := mark{m.lastLine(), 0, m.buf}
+	m2.pos = m2.lastCharPos()
+	m2.fixPos()
+	return m2
+}
+
+func (m mark) firstTextCharPos() mark {
+	m2 := mark{0, 0, m.buf}
+	return m2
 }

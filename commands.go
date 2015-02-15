@@ -21,6 +21,7 @@ type cmdContext struct {
 	customList []string   // optional string slice object
 	silent     bool       // if true does not redraw the screen after execution
 	msg        string     // to comunicate back to user
+	cmdChans   cmdStack   // channels to push the command and wait for done signal
 }
 
 type command struct {
@@ -28,7 +29,7 @@ type command struct {
 	parser parseFunc // a function to parse command arguments (if needed)
 }
 type cmdFunc func(ctx *cmdContext)
-type parseFunc func(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (parseFunc, bool)
+type parseFunc func(ev *UIEvent, ctx *cmdContext) (parseFunc, bool)
 
 var cmdStringTables = [2]map[string]command{cmdStringInsertMode, cmdStringNormalMode}
 var cmdKeyTables = [2]map[Key]command{cmdKeyInsertMode, cmdKeyNormalMode}
@@ -44,6 +45,7 @@ func lookupKeyCmd(m mode, key Key) command {
 var cmdKeyNormalMode = map[Key]command{
 	KeyCtrlS: command{saveToFile, nil},
 	KeyCtrlX: command{exitProgram, nil},
+	KeyCtrlR: command{redo, nil},
 }
 
 // commands should be at most two chars to avoid risk of over-shadowing one char
@@ -58,6 +60,7 @@ var cmdStringNormalMode = map[string]command{
 	"k":  command{moveCursorUp, nil},
 	"l":  command{moveCursorRight, nil},
 	"d":  command{delete_, parseRegion},
+	"dd": command{deleteLine, nil},
 	"x":  command{deleteCharForward, nil},
 	"e":  command{moveCursorTo, nil},
 	"E":  command{moveCursorTo, nil},
@@ -72,6 +75,7 @@ var cmdStringNormalMode = map[string]command{
 	"gg": command{moveCursorTo, nil},
 	"G":  command{moveCursorTo, nil},
 	"m":  command{recordMacro, nil},
+	"u":  command{undo, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{
@@ -118,38 +122,23 @@ func appendAtEndOfLine(ctx *cmdContext) {
 }
 
 func moveCursorLeft(ctx *cmdContext) {
-	if ctx.num == 0 {
-		ctx.num = 1
-	}
 	ctx.point.moveLeft(ctx.num)
 }
 
 func moveCursorRight(ctx *cmdContext) {
-	if ctx.num == 0 {
-		ctx.num = 1
-	}
 	ctx.point.moveRight(ctx.num)
 }
 
 func moveCursorUp(ctx *cmdContext) {
-	if ctx.num == 0 {
-		ctx.num = 1
-	}
 	ctx.point.moveUp(ctx.num)
 }
 
 func moveCursorDown(ctx *cmdContext) {
-	if ctx.num == 0 {
-		ctx.num = 1
-	}
 	ctx.point.moveDown(ctx.num)
 }
 
 func moveCursorTo(ctx *cmdContext) {
 	ctx.reg = motions[ctx.cmdString]
-	if ctx.num == 0 {
-		ctx.num = 1
-	}
 	for i := 0; i < ctx.num; i++ {
 		r, _ := ctx.reg(*ctx.point)
 		*ctx.point = r.end
@@ -158,9 +147,6 @@ func moveCursorTo(ctx *cmdContext) {
 }
 
 func delete_(ctx *cmdContext) {
-	if ctx.num == 0 {
-		ctx.num = 1
-	}
 	switch ctx.argString {
 	case "gg":
 		deleteToStart(ctx)
@@ -177,6 +163,25 @@ func delete_(ctx *cmdContext) {
 		}
 		ctx.point.buf.cs = *ctx.point
 	}
+}
+
+func deleteLine(ctx *cmdContext) {
+	p := ctx.point
+	toline := p.line + ctx.num - 1
+	if toline > p.maxLine() {
+		toline = p.maxLine()
+	}
+
+	// add undo info
+	start, end := mark{p.line, 0, p.buf}, mark{toline, 0, p.buf}
+	end.pos = end.lineEndPos()
+	r.changes.add(*ctx, undoContext{undoDelete, start.copy(end), start, mark{}})
+
+	p.buf.deleteLines(*p, mark{toline, 0, p.buf})
+	if p.line > p.maxLine() {
+		p.line--
+	}
+	p.fixPos()
 }
 
 func deleteToStart(ctx *cmdContext) {
@@ -199,9 +204,6 @@ func exitProgram(ctx *cmdContext) {
 }
 
 func deleteCharForward(ctx *cmdContext) {
-	if ctx.num == 0 {
-		ctx.num = 1
-	}
 	for i := 0; i < ctx.num; i++ {
 		ctx.point.deleteCharForward()
 		ctx.point.fixPos()

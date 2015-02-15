@@ -9,34 +9,39 @@ import (
 
 const keypressTimeout = 750 * time.Millisecond
 
-func checkCmd(c command, ctx *cmdContext, cmds chan cmdContext) parseFunc {
+func checkCmd(c command, ctx *cmdContext) parseFunc {
 	if c.cmd != nil {
 		ctx.cmd = c.cmd
 		if c.parser == nil {
-			pushCmd(ctx, cmds)
+			pushCmd(ctx)
 		}
 	}
 	ctx.customList = nil
 	return c.parser
 }
 
-func pushCmd(ctx *cmdContext, cmds chan cmdContext) {
-	cmds <- *ctx
-	<-cmds
+func pushCmd(ctx *cmdContext) {
+	if ctx.num == 0 {
+		ctx.num = 1
+	}
+	ctx.cmdChans.do <- *ctx
+	<-ctx.cmdChans.done
 }
 
-var cmdDone = cmdContext{}
+var cmdDone = struct{}{}
 
 func executeCommands(cmds chan cmdContext) {
-	defer cleanupOnError()
 	for {
-		c := <-cmds
-		c.cmd(&c)
-		if !c.silent {
-			ui.userMessage(c.msg)
-			ui.Draw()
-		}
-		cmds <- cmdDone
+		ctx := <-cmds
+		go func() {
+			defer cleanupOnError()
+			ctx.cmd(&ctx)
+			if !ctx.silent {
+				ui.userMessage(ctx.msg)
+				ui.Draw()
+			}
+			ctx.cmdChans.done <- cmdDone
+		}()
 	}
 }
 
@@ -48,7 +53,7 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 		ev             UIEvent
 	)
 	reprocess := make(chan UIEvent, 100)
-	ctx := &cmdContext{}
+	ctx := &cmdContext{cmdChans: cmdStack{cmds, make(chan struct{}, 1)}}
 	for {
 		// first we check if we need to reprocess an old keypress, if not we either
 		// wait for a new keypress or a timeout
@@ -58,25 +63,25 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 			select {
 			case ev = <-keys:
 				ctx.point = &ev.Buf.cs
-				if r.macro.on {
-					r.macro.record(ev.Key)
+				if r.macros.on {
+					r.macros.record(ev.Key)
 				}
 			case <-time.After(keypressTimeout):
 				ev.Type = UIEventTimeout
 			}
 		}
-		nextParser, reconsumeEvent = nextParser(&ev, ctx, cmds)
+		nextParser, reconsumeEvent = nextParser(&ev, ctx)
 		if reconsumeEvent {
 			reprocess <- ev
 		}
 		if nextParser == nil {
-			ctx = &cmdContext{}
+			ctx = &cmdContext{cmdChans: cmdStack{cmds, make(chan struct{}, 1)}}
 			nextParser = parseAction
 		}
 	}
 }
 
-func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
+func parseAction(ev *UIEvent, ctx *cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
 	switch {
 	// if called by a timeout execute a matched string command if we have one
@@ -85,9 +90,9 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			c := lookupStringCmd(ctx.point.buf.mod, ctx.cmdString)
 			if c.cmd != nil {
 				if ctx.point.buf.mod == insertMode {
-					deleteCommandChars(ctx, cmds)
+					deleteCommandChars(ctx)
 				}
-				return checkCmd(c, ctx, cmds), false
+				return checkCmd(c, ctx), false
 			}
 			if ctx.point.buf.mod == insertMode {
 				ctx.cmdString = ""
@@ -103,7 +108,7 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		} else {
 			c = lookupKeyCmd(ev.Buf.mod, ev.Key.Special)
 		}
-		return checkCmd(c, ctx, cmds), reprocessEvent
+		return checkCmd(c, ctx), reprocessEvent
 	case isNumber(ev.Key.Char, ctx) && ctx.cmdString == "":
 		loadNumber(ev.Key.Char, ctx)
 		return parseAction, false
@@ -116,7 +121,7 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		if m == insertMode {
 			// we insert the char and just delete it later if we match a command
 			ctx.cmd = insertChar
-			pushCmd(ctx, cmds)
+			pushCmd(ctx)
 		}
 		switch {
 		case len(submatches) == 0:
@@ -125,26 +130,26 @@ func parseAction(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			if m == normalMode {
 				c = lookupStringCmd(ev.Buf.mod, ctx.cmdString[:len(ctx.cmdString)-1])
 				if c.cmd != nil {
-					return checkCmd(c, ctx, cmds), true
+					return checkCmd(c, ctx), true
 				}
 			}
 			return nil, false
 		case len(submatches) == 1 && c.cmd != nil:
 			if m == insertMode {
-				deleteCommandChars(ctx, cmds)
+				deleteCommandChars(ctx)
 			}
-			return checkCmd(c, ctx, cmds), false
+			return checkCmd(c, ctx), false
 		default:
 			return parseAction, false
 		}
 	}
 }
 
-func deleteCommandChars(ctx *cmdContext, cmds chan cmdContext) {
+func deleteCommandChars(ctx *cmdContext) {
 	ctx.cmd = deleteCharBackward
 	ctx.silent = true
 	for i := 0; i < len(ctx.cmdString); i++ {
-		pushCmd(ctx, cmds)
+		pushCmd(ctx)
 	}
 	ctx.silent = false
 }
@@ -178,7 +183,7 @@ func matchCommand(mod mode, s string, list []string) (
 	return match, subMatches
 }
 
-func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
+func parseRegion(ev *UIEvent, ctx *cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
 	switch {
 	// if called by a timeout execute a matched string command if we have one
@@ -186,7 +191,7 @@ func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		if ctx.argString != "" {
 			ctx.reg = regionFuncs[ctx.argString]
 			if ctx.reg != nil {
-				pushCmd(ctx, cmds)
+				pushCmd(ctx)
 				return nil, false
 			}
 		}
@@ -196,7 +201,7 @@ func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 		// if we have a valid region in the pipeline we'll execute it; in any
 		// case we reset parsing and reprocess the event
 		if ctx.reg != nil {
-			pushCmd(ctx, cmds)
+			pushCmd(ctx)
 		}
 		return nil, true
 	case isNumber(ev.Key.Char, ctx) && ctx.argString == "":
@@ -213,7 +218,7 @@ func parseRegion(ev *UIEvent, ctx *cmdContext, cmds chan cmdContext) (
 			// if it is an exact match
 			if match != "" {
 				ctx.reg = regionFuncs[match]
-				pushCmd(ctx, cmds)
+				pushCmd(ctx)
 				return nil, false
 			}
 		default:

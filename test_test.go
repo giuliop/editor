@@ -21,7 +21,7 @@ func allDoneCmd(ctx *cmdContext) {
 
 var (
 	keys     = make(chan UIEvent, 100)
-	commands = make(chan cmdContext)
+	commands = make(chan cmdContext, 100)
 	allDone  = make(chan struct{}) // used this to signal all commands done
 )
 
@@ -57,9 +57,9 @@ func cleanup() {
 func executeTestCommands(cmds chan cmdContext) {
 	defer cleanupOnError()
 	for {
-		c := <-cmds
-		c.cmd(&c)
-		cmds <- cmdDone
+		ctx := <-cmds
+		ctx.cmd(&ctx)
+		ctx.cmdChans.done <- cmdDone
 	}
 }
 
@@ -177,14 +177,14 @@ func TestStringToFileToBufferToString(t *testing.T) {
 }
 
 func recordTestMacro(ctx *cmdContext) {
-	if r.macro.on {
+	if r.macros.on {
 		// save the macro keys removing the last key which is end record key
-		keys := r.macro.keys[:len(r.macro.keys)-1]
-		r.macro.macros[0] = keys
-		r.macro.stop()
+		keys := r.macros.keys[:len(r.macros.keys)-1]
+		r.macros.macros[0] = keys
+		r.macros.stop()
 		ctx.msg = "finished recording"
 		return
 	}
-	r.macro.start()
+	r.macros.start()
 	ctx.msg = "started macro recording"
 }

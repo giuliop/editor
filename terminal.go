@@ -54,6 +54,8 @@ func (t *terminal) Draw() {
 	}
 	t.statusLine()
 	t.messageLine()
+	//debug.Printf("line %v, maxline %v", b.cursorLine(), len(b.content())-1)
+	//debug.Printf("pos %v, maxpos %v", b.cursorPos(), len(b.content()[b.cursorLine()])-1)
 	stringBeforeCs := string(b.content()[b.cursorLine()][:b.cursorPos()])
 	t.setCursor(runewidth.StringWidth(stringBeforeCs), b.cursorLine())
 	t.flush()

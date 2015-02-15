@@ -19,13 +19,13 @@ func initDebug() *debugLogger {
 	logPrefix := "(debug) "
 	logFlags := log.Ldate + log.Ltime + log.Lshortfile
 	d := &debugLogger{log.New(f, logPrefix, logFlags), f}
-	d.Printf("\nNew Editor run\n\n")
+	d.Println("\n\nNew Editor run\n")
 	return d
 }
 
 func (d *debugLogger) printStack() {
 	b := make([]byte, 1024)
-	runtime.Stack(b, false)
+	runtime.Stack(b, true)
 	d.Printf("%s", b)
 }
 

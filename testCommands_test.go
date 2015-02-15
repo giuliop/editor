@@ -219,8 +219,7 @@ func equalStrings(actual, expected string) error {
 		count += size
 		if c != r {
 			return fmt.Errorf("no match at line %v pos %v, expected %q, found %q"+
-				"in:\nactual\n%q\nexpected\n%q\n", line+1, i-offset, r, c, actual,
-				expected)
+				"in:\nactual\n%q\nexpected\n%q\n", line+1, i-offset, r, c, actual, expected)
 		}
 		if r == '\n' {
 			line++
@@ -272,25 +271,91 @@ func TestDeleteToEndAndStartOfLine(t *testing.T) {
 	}
 }
 
+type _cmd []interface{}
+
 func TestDeleteToNextWordStart(t *testing.T) {
-	b := stringToBuffer(defaultText)
-	e := newKeyPressEmitter(b)
-	e.emit("w", "dw", "12l", "2h", "dw", "j", "2h", "dw", "2j", "k", "w",
-		"k", "dw", "j", "4l", "3h", "dw", "k", "w", "k", "dw", "j", "10e", "4h", "6l",
-		"dw")
-	expected := "" +
-		"   xxx___yyy ^_ppp  \n" +
-		"func (e key) emit(a ...interface{}) {\n" +
-		"xxx***(((_ciao *** &&& ff.ff  *\n" +
-		"_ \n" +
-		"non c'e' male, davvero ....\n"
-	err := equalStrings(bufferToString(b), expected)
+	num := 8
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+	str[0] = "hello dude\n"
+	cmd[0] = _cmd{"dw"}
+	exp[0] = "dude\n"
+
+	str[1] = "\n"
+	cmd[1] = _cmd{"dw"}
+	exp[1] = "\n"
+
+	str[2] = "hello dude\n"
+	cmd[2] = _cmd{"w", "dw"}
+	exp[2] = "hello \n"
+
+	str[3] = "var xxx_yyy\n"
+	cmd[3] = _cmd{"w", "l", "dw"}
+	exp[3] = "var x\n"
+
+	str[4] = "var xxx^yyy\n"
+	cmd[4] = _cmd{"w", "l", "dw"}
+	exp[4] = "var x^yyy\n"
+
+	str[5] = "var xxx^yyy\n"
+	cmd[5] = _cmd{"L", "dw"}
+	exp[5] = "var xxx^yy\n"
+
+	str[6] = "1\n2\n3\n"
+	cmd[6] = _cmd{"dw"}
+	exp[6] = "2\n3\n"
+
+	str[7] = "Hi  \n  dude\n"
+	cmd[7] = _cmd{"3l", "dw"}
+	exp[7] = "Hi dude\n"
+
+	err := _testStrings(str, exp, cmd)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 }
 
-type _cmd []interface{}
+func TestDeleteToNextWORDStart(t *testing.T) {
+	num := 8
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+	str[0] = "hello dude\n"
+	cmd[0] = _cmd{"dW"}
+	exp[0] = "dude\n"
+
+	str[1] = "\n"
+	cmd[1] = _cmd{"dW"}
+	exp[1] = "\n"
+
+	str[2] = "hello dude\n"
+	cmd[2] = _cmd{"w", "dW"}
+	exp[2] = "hello \n"
+
+	str[3] = "var xxx_yyy\n"
+	cmd[3] = _cmd{"w", "l", "dW"}
+	exp[3] = "var x\n"
+
+	str[4] = "var xxx^yyy\n"
+	cmd[4] = _cmd{"w", "l", "dW"}
+	exp[4] = "var x\n"
+
+	str[5] = "var xxx^yyy\n"
+	cmd[5] = _cmd{"L", "dW"}
+	exp[5] = "var xxx^yy\n"
+
+	str[6] = "1\n2\n3\n"
+	cmd[6] = _cmd{"dW"}
+	exp[6] = "2\n3\n"
+
+	str[7] = "Hi  \n  dude\n"
+	cmd[7] = _cmd{"3l", "dW"}
+	exp[7] = "Hi dude\n"
+
+	err := _testStrings(str, exp, cmd)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
 
 func TestDeleteToWordEnd(t *testing.T) {
 	num := 8
@@ -317,8 +382,8 @@ func TestDeleteToWordEnd(t *testing.T) {
 	exp[4] = "var x^yyy\n"
 
 	str[5] = "var xxx^yyy\n"
-	cmd[5] = _cmd{"w", "l", "de"}
-	exp[5] = "var x^yyy\n"
+	cmd[5] = _cmd{"L", "de"}
+	exp[5] = "var xxx^yy\n"
 
 	str[6] = "1\n2\n3\n"
 	cmd[6] = _cmd{"de"}
@@ -327,6 +392,133 @@ func TestDeleteToWordEnd(t *testing.T) {
 	str[7] = "Hi  \n  dude\n"
 	cmd[7] = _cmd{"2l", "de"}
 	exp[7] = "Hi\n"
+
+	err := _testStrings(str, exp, cmd)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestDeleteToWORDEnd(t *testing.T) {
+	num := 8
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+	str[0] = "hello dude\n"
+	cmd[0] = _cmd{"dE"}
+	exp[0] = " dude\n"
+
+	str[1] = "\n"
+	cmd[1] = _cmd{"dE"}
+	exp[1] = "\n"
+
+	str[2] = "hello dude\n"
+	cmd[2] = _cmd{"w", "dE"}
+	exp[2] = "hello \n"
+
+	str[3] = "var xxx_yyy\n"
+	cmd[3] = _cmd{"w", "l", "dE"}
+	exp[3] = "var x\n"
+
+	str[4] = "var xxx^yyy\n"
+	cmd[4] = _cmd{"w", "l", "dE"}
+	exp[4] = "var x\n"
+
+	str[5] = "var xxx^yyy\n"
+	cmd[5] = _cmd{"L", "dE"}
+	exp[5] = "var xxx^yy\n"
+
+	str[6] = "1\n2\n3\n"
+	cmd[6] = _cmd{"dE"}
+	exp[6] = "3\n"
+
+	str[7] = "Hi  \n  dude\n"
+	cmd[7] = _cmd{"2l", "dE"}
+	exp[7] = "Hi\n"
+
+	err := _testStrings(str, exp, cmd)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestDeleteToWordStart(t *testing.T) {
+	num := 8
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+	str[0] = "hello dude\n"
+	cmd[0] = _cmd{"e", "db"}
+	exp[0] = "o dude\n"
+
+	str[1] = "\n"
+	cmd[1] = _cmd{"db"}
+	exp[1] = "\n"
+
+	str[2] = "hello dude\n"
+	cmd[2] = _cmd{"w", "db"}
+	exp[2] = "dude\n"
+
+	str[3] = "var xxx_yyy\n"
+	cmd[3] = _cmd{"L", "db"}
+	exp[3] = "var y\n"
+
+	str[4] = "var xxx^yyy\n"
+	cmd[4] = _cmd{"L", "db"}
+	exp[4] = "var xxx^y\n"
+
+	str[5] = "var xxx^yyy\n"
+	cmd[5] = _cmd{"2w", "db"}
+	exp[5] = "var ^yyy\n"
+
+	str[6] = "1\n2\n3\n"
+	cmd[6] = _cmd{"G", "db"}
+	exp[6] = "1\n3\n"
+
+	str[7] = "Hi  \n  dude\n"
+	cmd[7] = _cmd{"w", "db"}
+	exp[7] = "dude\n"
+
+	err := _testStrings(str, exp, cmd)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+}
+
+func TestDeleteToWORDStart(t *testing.T) {
+	num := 8
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+
+	str[0] = "hello dude\n"
+	cmd[0] = _cmd{"e", "dB"}
+	exp[0] = "o dude\n"
+
+	str[1] = "\n"
+	cmd[1] = _cmd{"dB"}
+	exp[1] = "\n"
+
+	str[2] = "hello dude\n"
+	cmd[2] = _cmd{"w", "dB"}
+	exp[2] = "dude\n"
+
+	str[3] = "var xxx_yyy\n"
+	cmd[3] = _cmd{"L", "dB"}
+	exp[3] = "var y\n"
+
+	str[4] = "var xxx^yyy\n"
+	cmd[4] = _cmd{"L", "dB"}
+	exp[4] = "var y\n"
+
+	str[5] = "var xxx^yyy\n"
+	cmd[5] = _cmd{"2w", "dB"}
+	exp[5] = "var ^yyy\n"
+
+	str[6] = "1\n2\n3\n"
+	cmd[6] = _cmd{"G", "dB"}
+	exp[6] = "1\n3\n"
+
+	str[7] = "Hi  \n  dude\n"
+	cmd[7] = _cmd{"w", "dB"}
+	exp[7] = "dude\n"
 
 	err := _testStrings(str, exp, cmd)
 	if err != nil {
@@ -345,4 +537,47 @@ func _testStrings(actuals, expected []string, commands [][]interface{}) error {
 		}
 	}
 	return nil
+}
+
+func TestDeleteLine(t *testing.T) {
+	num := 8
+	str, exp := make([]string, num), make([]string, num)
+	cmd := make([][]interface{}, num)
+
+	str[0] = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n"
+	cmd[0] = _cmd{"4j", "10dd"}
+	exp[0] = "1\n2\n3\n4\n15\n"
+
+	str[1] = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n"
+	cmd[1] = _cmd{"4j", "11dd", "a0"}
+	exp[1] = "1\n2\n3\n40\n"
+
+	str[2] = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n"
+	cmd[2] = _cmd{"4j", "20dd"}
+	exp[2] = "1\n2\n3\n4\n"
+
+	str[3] = "\n"
+	cmd[3] = _cmd{"dd"}
+	exp[3] = "\n"
+
+	str[4] = "\n"
+	cmd[4] = _cmd{"3dd"}
+	exp[4] = "\n"
+
+	str[5] = "1\n"
+	cmd[5] = _cmd{"dd"}
+	exp[5] = "\n"
+
+	str[6] = "1\n2\n3\n"
+	cmd[6] = _cmd{"j", "2dd"}
+	exp[6] = "1\n"
+
+	str[7] = "1\n2\n3\n"
+	cmd[7] = _cmd{"2j", "dd"}
+	exp[7] = "1\n2\n"
+
+	err := _testStrings(str, exp, cmd)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 }
