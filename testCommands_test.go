@@ -22,7 +22,7 @@ var (
 		" _ \n" +
 		"non c'e' male, davvero .... \n"
 
-	emptyText = "\n"
+	emptyLineText = "\n"
 
 	emptyLinesText = "" +
 		"\n" +
@@ -32,7 +32,7 @@ var (
 
 var samples = []string{
 	defaultText,
-	emptyText,
+	emptyLineText,
 	emptyLinesText,
 }
 
@@ -533,7 +533,7 @@ func _testStrings(actuals, expected []string, commands [][]interface{}) error {
 		e.emit(commands[i]...)
 		err := equalStrings(bufferToString(b), expected[i])
 		if err != nil {
-			return err
+			return fmt.Errorf("Error at test %v: %v", i, err)
 		}
 	}
 	return nil

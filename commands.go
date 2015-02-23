@@ -19,6 +19,7 @@ type cmdContext struct {
 	argString  string     // optional input string defining the command arg
 	reg        regionFunc // optional region object
 	customList []string   // optional string slice object
+	text       []line     // optional text object
 	silent     bool       // if true does not redraw the screen after execution
 	msg        string     // to comunicate back to user
 	cmdChans   cmdStack   // channels to push the command and wait for done signal
@@ -76,6 +77,7 @@ var cmdStringNormalMode = map[string]command{
 	"G":  command{moveCursorTo, nil},
 	"m":  command{recordMacro, nil},
 	"u":  command{undo, nil},
+	//"p":  command{paste, nil},
 }
 
 var cmdKeyInsertMode = map[Key]command{
@@ -92,33 +94,38 @@ var cmdKeyInsertMode = map[Key]command{
 }
 
 var cmdStringInsertMode = map[string]command{
-	"AA": command{appendAtEndOfLine, nil},
+	"AA": command{XXXtempbeforemapping, nil},
+}
+
+// TODO
+func XXXtempbeforemapping(ctx *cmdContext) {
+	ctx.point.setMode(normalMode)
+	appendAtEndOfLine(ctx)
 }
 
 func toNormalMode(ctx *cmdContext) {
-	ctx.point.buf.mod = normalMode
 	if !ctx.point.atLineStart() {
 		ctx.point.moveLeft(1)
 	}
+	ctx.point.setMode(normalMode)
 	ctx.msg = "Normal mode"
 }
 
 func insertAtCs(ctx *cmdContext) {
-	ctx.point.buf.mod = insertMode
+	ctx.point.setMode(insertMode)
 }
 
 func appendAtCs(ctx *cmdContext) {
 	// move cursor right unless empty line
-	ctx.point.buf.mod = insertMode
 	if !ctx.point.atEmptyLine() {
-		ctx.point.moveRight(1)
+		ctx.point.pos++
 	}
+	ctx.point.setMode(insertMode)
 }
 
 func appendAtEndOfLine(ctx *cmdContext) {
-	// move cursor right unless empty line
-	ctx.point.buf.mod = insertMode
-	ctx.point.pos = ctx.point.maxCursPos()
+	ctx.point.pos = ctx.point.lineEndPos()
+	ctx.point.setMode(insertMode)
 }
 
 func moveCursorLeft(ctx *cmdContext) {
@@ -175,7 +182,7 @@ func deleteLine(ctx *cmdContext) {
 	// add undo info
 	start, end := mark{p.line, 0, p.buf}, mark{toline, 0, p.buf}
 	end.pos = end.lineEndPos()
-	p.buf.changeList.add(*ctx, undoContext{undoDelete, start.copy(end), start, mark{}})
+	p.buf.changeList.add(*ctx, undoContext{start.copy(end), start, mark{}})
 
 	p.buf.deleteLines(*p, mark{toline, 0, p.buf})
 	if p.line > p.maxLine() {
@@ -208,10 +215,22 @@ func deleteCharForward(ctx *cmdContext) {
 		ctx.point.deleteCharForward()
 		ctx.point.fixPos()
 	}
+	// TODO update lastInsert
 }
 
 func deleteCharBackward(ctx *cmdContext) {
 	*ctx.point = ctx.point.deleteCharBackward()
+
+	// update lastInsert
+	//i := &ctx.point.buf.lastInsert
+	//lastLine := len(i.text) - 1
+	//if len(i.text[lastLine]) == 0 {
+	//if len(i.text) > 1 {
+	//i.text = i.text[:lastLine]
+	//}
+	//} else {
+	//i.text[lastLine] = i.text[lastLine][:len(i.text[lastLine])-1]
+	//}
 }
 
 func insertTab(ctx *cmdContext) {
@@ -241,4 +260,8 @@ func saveToFile(ctx *cmdContext) {
 	} else {
 		ctx.msg = "file saved"
 	}
+}
+
+func paste(ctx *cmdContext) {
+	ctx.point.insertText(ctx.text)
 }

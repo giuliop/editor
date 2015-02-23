@@ -20,9 +20,8 @@ func allDoneCmd(ctx *cmdContext) {
 }
 
 var (
-	keys     = make(chan UIEvent, 100)
-	commands = make(chan cmdContext, 100)
-	allDone  = make(chan struct{}) // used this to signal all commands done
+	keys    = make(chan UIEvent, 100)
+	allDone = make(chan struct{}) // used this to signal all commands done
 )
 
 type testUI struct {

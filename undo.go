@@ -7,15 +7,13 @@ const MAX_UNDO = 10000
 type changeList struct {
 	ops      []bufferChange
 	current  int  // the position of the next op to undo (0 if none)
-	total    int  // the total number of actions in the register
 	redoMode bool // if true we are redoing an action, no need to record it
 }
 
 type undoContext struct {
-	action undoAction
-	text   []line
-	start  mark
-	end    mark
+	text  []line
+	start mark
+	end   mark
 }
 
 type undoAction int
@@ -37,8 +35,9 @@ func (c *changeList) add(redo cmdContext, undo undoContext) {
 			c.ops = c.ops[1:]
 			c.current--
 		}
-		c.ops = append(c.ops[:c.current+1], bufferChange{*redoCtx(&redo), undo})
 		c.current++
+		c.ops = append(c.ops[:c.current], bufferChange{newRedoCtx(&redo), undo})
+		debug.Printf("Added undo redo context n. %v\n", c.current)
 	}
 }
 
@@ -47,18 +46,22 @@ func (c *changeList) undo() string {
 		return "No more changes to undo"
 	}
 	ctx := c.ops[c.current].undo
-	switch ctx.action {
-	case undoDelete:
-		ctx.start.insertText(ctx.text)
-	case undoWrite:
+	// if ctx.end is not set we don't need to delete text
+	if ctx.end.buf != nil {
 		region{ctx.start, ctx.end}.delete(right)
-	case undoReplace:
-		region{ctx.start, ctx.end}.delete(right)
-		ctx.start.insertText(ctx.text)
 	}
+	if len(ctx.text) != 0 {
+		ctx.start.insertText(ctx.text)
+	} else {
+		// if we can we move left the cursor to place it before the deleted text
+		if !ctx.start.atLineStart() {
+			ctx.start.moveLeft(1)
+		}
+	}
+
 	ctx.start.buf.cs = ctx.start
 	c.current--
-	return fmt.Sprintf("undid change #%v of %v", c.current, c.total)
+	return fmt.Sprintf("undid change #%v of %v", c.current+1, len(c.ops)-1)
 }
 
 func (c *changeList) redo() string {
@@ -73,7 +76,7 @@ func (c *changeList) redo() string {
 	pushCmd(&ctx)
 	ctx.point.buf.cs = *ctx.point
 	c.redoMode = false
-	return fmt.Sprintf("redid change #%v of %v", c.current, c.total)
+	return fmt.Sprintf("redid change #%v of %v", c.current, len(c.ops)-1)
 }
 
 func undo(ctx *cmdContext) {
@@ -88,9 +91,9 @@ func redo(ctx *cmdContext) {
 	}
 }
 
-func redoCtx(ctx *cmdContext) *cmdContext {
+func newRedoCtx(ctx *cmdContext) cmdContext {
 	p := *ctx.point
 	ctx.point = &p
 	ctx.silent = true
-	return ctx
+	return *ctx
 }

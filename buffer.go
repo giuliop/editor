@@ -7,17 +7,27 @@ import (
 
 // buffer is the representation of an open buffer
 type buffer struct {
-	text     []line
-	cs       mark
-	marks    []mark
-	mod      mode
-	name     string
-	filename string
-	fileSync time.Time
-	modified bool
-	// TODO make it file based
-	changeList changeList
+	text       text
+	cs         mark
+	marks      []mark
+	mod        mode
+	name       string
+	filename   string
+	fileSync   time.Time
+	modified   bool       // true if not synched with file
+	changeList changeList // for undo / redo (TODO make it file based)
+	lastInsert insertText // text added in last insertMode session
 }
+
+// insertText represents the change to the buffer's text since insertMode was
+// last entered
+type insertText struct {
+	newText text  // the new text inserted
+	oldText text  // the old text deleted
+	start   *mark // where the change starts
+}
+
+type text []line
 
 // line represent a line in a buffer
 type line []rune
@@ -64,10 +74,16 @@ func (b *buffer) statusLine() []interface{} {
 
 // insertChar inserts the passed in rune after the mark
 func (m mark) insertChar(ch rune) {
+	if ch == '\n' {
+		panic("Wrong function to insert newline")
+	}
 	b := m.buf
 	b.text[m.line] = append(b.text[m.line], 0)
 	copy(b.text[m.line][m.pos+1:], b.text[m.line][m.pos:])
 	b.text[m.line][m.pos] = ch
+
+	// add undo info
+	b.lastInsert.newText.appendChar(ch)
 }
 
 // insertNewLineChar inserts a new line after the mark
@@ -76,6 +92,9 @@ func (m mark) insertNewLineChar() {
 	m.insertLineBelow()
 	b.text[m.line+1] = append(line(nil), b.text[m.line][m.pos:]...)
 	b.text[m.line] = append(b.text[m.line][:m.pos], '\n')
+
+	// add undo info
+	b.lastInsert.newText.appendChar('\n')
 }
 
 // insertLineBelow inserts a line belor the mark
@@ -91,6 +110,8 @@ func (m mark) insertLineBelow() {
 // the new postion of the mark to be used to move the cursor if needed
 func (m mark) deleteCharBackward() mark {
 	b := m.buf
+	var deleted rune // for undo info
+
 	if m.atLineStart() {
 		if m.atFirstLine() {
 			return m
@@ -98,24 +119,40 @@ func (m mark) deleteCharBackward() mark {
 		m.line -= 1
 		m.pos = m.lastCharPos() + 1
 		m.joinLineBelow()
+		deleted = '\n'
 	} else {
 		m.pos -= 1
+		deleted = m.char()
 		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)
 	}
+
+	// add undo info
+	b.lastInsert.oldText.prependChar(deleted)
+	if m.isBefore(*b.lastInsert.start) {
+		b.lastInsert.start = &m
+	}
+
 	return m
 }
 
 // deleteCharForward deletes the character under the mark
 func (m mark) deleteCharForward() {
 	b := m.buf
+	var deleted rune // for undo info
+
 	if m.atLineEnd() {
 		if m.atLastLine() {
 			return
 		}
 		m.joinLineBelow()
+		deleted = '\n'
 	} else {
+		deleted = m.char()
 		b.text[m.line] = append(b.text[m.line][:m.pos], b.text[m.line][m.pos+1:]...)
 	}
+
+	// add undo info
+	b.lastInsert.oldText.appendChar(deleted)
 }
 
 // joinLineBelow joins the mark's line with the line below
@@ -153,7 +190,7 @@ func (b *buffer) deleteLines(m1, m2 mark) int {
 // to be used to position the cursor if needed
 func (r region) delete(dir direction) mark {
 	var fr, to = orderMarks(r.start, r.end)
-	// if we delete towards right we also want to delete the end mark's char
+	// if we don't delete towards right we don't want to delete the end mark's char
 	if dir == right && !to.atEmptyLine() {
 		to.pos++
 	}
@@ -169,29 +206,37 @@ func (r region) delete(dir direction) mark {
 	return fr
 }
 
-func (m mark) insertText(text []line) {
+func (m mark) insertText(text text) {
 	if len(text) == 0 {
 		return
 	}
+
 	b := m.buf
-	emptyBuf := len(b.text) == 1 && b.text[0][0] == '\n'
+	//emptyBuf := len(b.text) == 1 && b.text[0][0] == '\n'
+	//if emptyBuf {
+	//b.text = append([]line{}, text...)
+	//if b.text.lastChar() != '\n' {
+	//b.text.appendChar('\n')
+	//}
+	//return
+	//}
+
 	if m.line > m.maxLine() {
 		b.text = append(b.text, line{})
 	}
-	suffix := line{}
-	if !emptyBuf {
-		suffix = append(suffix, b.text[m.line][m.pos:]...)
-	}
+	suffix := append(line{}, b.text[m.line][m.pos:]...)
 	b.text[m.line] = append(b.text[m.line][:m.pos], text[0]...)
 	seg1 := b.text[:m.line+1]
 	seg2 := text[1:]
 	seg3 := b.text[m.line+1:]
 	//debug.Printf("seg3 %q, len %v", seg3, len(seg3))
-	lastline := text[len(text)-1]
 	if len(suffix) > 0 {
-		if lastline[len(lastline)-1] != '\n' {
-			seg2[len(seg2)-1] = append(seg2[len(seg2)-1], suffix...)
-		} else {
+		switch {
+		case seg1.lastChar() != '\n':
+			seg1.appendChars(suffix)
+		case len(seg2) > 0 && seg2.lastChar() != '\n':
+			seg2.appendChars(suffix)
+		default:
 			seg3 = append([]line{suffix}, seg3...)
 		}
 	}
@@ -214,4 +259,70 @@ func (from mark) copy(to mark) (text []line) {
 	}
 	text = append(text, start.buf.text[end.line][:end.pos+1])
 	return text
+}
+
+// setMode sets the buffer mode. If we enter insertMode we reset the insertText field
+// so that we can record a new insert session
+func (m mark) setMode(newM mode) {
+	oldM := m.buf.mod
+	change := oldM != newM
+	// TODO note that the cursor has already being moved!
+	if change {
+		m.exitingMode()
+		m.enteringMode(newM)
+	}
+	m.buf.mod = newM
+	if change {
+		m.exitedMode(oldM)
+		m.enteredMode(newM)
+	}
+}
+
+func (m mark) enteredMode(mod mode) {
+	switch mod {
+	case insertMode:
+		m.initLastInsert()
+	}
+}
+
+func (m mark) exitedMode(mod mode) {
+	switch mod {
+	case insertMode:
+		m.addUndoRedoLastInsert()
+	}
+}
+
+func (m mark) exitingMode() {
+	switch m.buf.mod {
+	case insertMode:
+	}
+}
+
+func (m mark) enteringMode(mod mode) {
+	switch m.buf.mod {
+	}
+}
+
+func (m mark) addUndoRedoLastInsert() {
+	undoCtx := undoContext{
+		text:  nil,
+		start: *m.buf.lastInsert.start,
+		end:   m,
+	}
+	redoCtx := &cmdContext{
+		num:      1,
+		cmd:      paste,
+		point:    m.buf.lastInsert.start,
+		text:     m.buf.lastInsert.newText,
+		cmdChans: cmdStack{commands, make(chan struct{}, 1)},
+	}
+	m.buf.changeList.add(newRedoCtx(redoCtx), undoCtx)
+}
+
+func textToString(t []line) string {
+	s := ""
+	for _, line := range t {
+		s += string(line)
+	}
+	return s
 }

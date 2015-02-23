@@ -210,3 +210,8 @@ func (m mark) firstTextCharPos() mark {
 	m2 := mark{0, 0, m.buf}
 	return m2
 }
+
+func (m mark) isBefore(m2 mark) bool {
+	return m.line < m2.line ||
+		(m.line == m2.line && m.pos < m2.pos)
+}

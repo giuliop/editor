@@ -4,11 +4,12 @@ package main
 import "os"
 
 var (
-	be   backend                    // the open buffers collection backend
-	ui   UI                         // the user interface
-	r    = register{}               // holds all global lists: macros...
-	exit = make(chan bool)          // to command exiting the program
-	wait = make(chan struct{}, 100) // for async operations that must end before exit
+	be       backend                      // the open buffers collection backend
+	ui       UI                           // the user interface
+	r        = register{}                 // holds all global lists: macros...
+	commands = make(chan cmdContext, 100) // to push commands (sync)
+	exit     = make(chan bool)            // to command exiting the program
+	wait     = make(chan struct{}, 100)   // for async operations that must end before exit
 )
 
 var debug *debugLogger
@@ -87,7 +88,6 @@ func main() {
 
 	//activate channels for keypresses and recognized commands
 	keys := make(chan UIEvent, 100)
-	commands := make(chan cmdContext, 100)
 	go manageKeypress(keys, commands)
 	go executeCommands(commands)
 

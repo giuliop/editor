@@ -3,3 +3,4 @@
 3. what about 1 & 2 for save/open file (in terms of the underlying copy buffer)
 4. should enterNormalMode (& others?) be blocking functions? Otherwise parseAction
    might read following keypresses with the wrong buffer mode
+5. remove panic calls
