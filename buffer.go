@@ -305,7 +305,7 @@ func (m mark) enteringMode(mod mode) {
 
 func (m mark) addUndoRedoLastInsert() {
 	undoCtx := undoContext{
-		text:  nil,
+		text:  m.buf.lastInsert.oldText,
 		start: *m.buf.lastInsert.start,
 		end:   m,
 	}

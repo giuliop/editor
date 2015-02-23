@@ -46,11 +46,12 @@ func (c *changeList) undo() string {
 		return "No more changes to undo"
 	}
 	ctx := c.ops[c.current].undo
+	debug.Println(ctx)
 	// if ctx.end is not set we don't need to delete text
 	if ctx.end.buf != nil {
 		region{ctx.start, ctx.end}.delete(right)
 	}
-	if len(ctx.text) != 0 {
+	if !text(ctx.text).emptyText() {
 		ctx.start.insertText(ctx.text)
 	} else {
 		// if we can we move left the cursor to place it before the deleted text
@@ -59,6 +60,7 @@ func (c *changeList) undo() string {
 		}
 	}
 
+	debug.Println(ctx)
 	ctx.start.buf.cs = ctx.start
 	c.current--
 	return fmt.Sprintf("undid change #%v of %v", c.current+1, len(c.ops)-1)
