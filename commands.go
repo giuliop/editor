@@ -162,11 +162,11 @@ func delete_(ctx *cmdContext) {
 	default:
 		for i := 0; i < ctx.num; i++ {
 			r, dir := ctx.reg(*ctx.point)
-			if (ctx.argString == "W" || ctx.argString == "w") &&
-				!r.end.atLastTextChar() {
-				r.end.pos--
+			if dir == right && !r.end.atLineEnd() &&
+				!((ctx.argString == "W" || ctx.argString == "w") && !r.end.atLastTextChar()) {
+				r.end.pos++
 			}
-			*ctx.point = r.delete(dir)
+			*ctx.point = r.delete()
 		}
 		ctx.point.buf.cs = *ctx.point
 	}
@@ -260,6 +260,11 @@ func saveToFile(ctx *cmdContext) {
 	} else {
 		ctx.msg = "file saved"
 	}
+}
+
+func replace(ctx *cmdContext) {
+	r, _ := ctx.reg(mark{})
+	r.replace(ctx.text)
 }
 
 func paste(ctx *cmdContext) {

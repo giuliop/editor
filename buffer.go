@@ -135,7 +135,7 @@ func (m mark) deleteCharBackward() mark {
 	return m
 }
 
-// deleteCharForward deletes the character under the mark
+// deleteCharForward deletes the character after the mark
 func (m mark) deleteCharForward() {
 	b := m.buf
 	var deleted rune // for undo info
@@ -186,14 +186,10 @@ func (b *buffer) deleteLines(m1, m2 mark) int {
 	return m2.line - m1.line + 1
 }
 
-// deleteRegion deletes the text between the two region's marks and returns a mark
+// delete deletes the text between the two region's marks and returns a mark
 // to be used to position the cursor if needed
-func (r region) delete(dir direction) mark {
+func (r region) delete() mark {
 	var fr, to = orderMarks(r.start, r.end)
-	// if we don't delete towards right we don't want to delete the end mark's char
-	if dir == right && !to.atEmptyLine() {
-		to.pos++
-	}
 	b := fr.buf
 	b.text[fr.line] = append(b.text[fr.line][:fr.pos], b.text[to.line][to.pos:]...)
 	if to.line > fr.line {
@@ -206,6 +202,13 @@ func (r region) delete(dir direction) mark {
 	return fr
 }
 
+// replace replaces the region with newText
+func (r region) replace(newText text) {
+	r.delete()
+	r.start.insertText(newText)
+}
+
+// insertText inserts the text at mark
 func (m mark) insertText(text text) {
 	if len(text) == 0 {
 		return
@@ -304,17 +307,28 @@ func (m mark) enteringMode(mod mode) {
 }
 
 func (m mark) addUndoRedoLastInsert() {
+	start := *m.buf.lastInsert.start
 	undoCtx := undoContext{
 		text:  m.buf.lastInsert.oldText,
-		start: *m.buf.lastInsert.start,
+		start: start,
 		end:   m,
+	}
+	undoEnd := start.toEndofText(m.buf.lastInsert.oldText)
+	regF := func(m mark) (region, direction) {
+		return region{start: start,
+			end: undoEnd}, right
 	}
 	redoCtx := &cmdContext{
 		num:      1,
-		cmd:      paste,
+		cmd:      replace,
 		point:    m.buf.lastInsert.start,
 		text:     m.buf.lastInsert.newText,
+		reg:      regF,
 		cmdChans: cmdStack{commands, make(chan struct{}, 1)},
+	}
+	// if same start and end we don't want to delete char under mark
+	if start.isSame(undoEnd) {
+		redoCtx.cmd = paste
 	}
 	m.buf.changeList.add(newRedoCtx(redoCtx), undoCtx)
 }

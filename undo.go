@@ -37,7 +37,6 @@ func (c *changeList) add(redo cmdContext, undo undoContext) {
 		}
 		c.current++
 		c.ops = append(c.ops[:c.current], bufferChange{newRedoCtx(&redo), undo})
-		debug.Printf("Added undo redo context n. %v\n", c.current)
 	}
 }
 
@@ -46,10 +45,9 @@ func (c *changeList) undo() string {
 		return "No more changes to undo"
 	}
 	ctx := c.ops[c.current].undo
-	debug.Println(ctx)
 	// if ctx.end is not set we don't need to delete text
 	if ctx.end.buf != nil {
-		region{ctx.start, ctx.end}.delete(right)
+		region{ctx.start, ctx.end}.delete()
 	}
 	if !text(ctx.text).emptyText() {
 		ctx.start.insertText(ctx.text)
@@ -60,7 +58,6 @@ func (c *changeList) undo() string {
 		}
 	}
 
-	debug.Println(ctx)
 	ctx.start.buf.cs = ctx.start
 	c.current--
 	return fmt.Sprintf("undid change #%v of %v", c.current+1, len(c.ops)-1)

@@ -1,9 +1,9 @@
 package main
 
 type mark struct {
-	line int
-	pos  int
-	buf  *buffer
+	line int     // the line the mark is at (line starts from 0)
+	pos  int     // the position in the line (0 is left of first character)
+	buf  *buffer // the buffer the mark is in
 }
 
 func newMark(b *buffer) mark {
@@ -26,19 +26,21 @@ func (m *mark) atLineStart() bool {
 	return m.pos == 0
 }
 
-// atLineEnd returns whether the mark is at line end, that is on the newline char
+// atLineEnd returns whether the mark is at line end, that is left of newline char
 func (m *mark) atLineEnd() bool {
 	return m.pos == len(m.buf.text[m.line])-1
 }
 
 func (m *mark) atStartOfText() bool {
-	return m.line == 0 && m.pos == 0
+	return m.atFirstLine() && m.atLineStart()
 }
 
 func (m *mark) atEndOfText() bool {
 	return m.atLastLine() && m.atLineEnd()
 }
 
+// atLastTextChar return whether the mark is left of the last character of the last
+// line (or before the newline if the last line is empty)
 func (m *mark) atLastTextChar() bool {
 	return m.atLastLine() && (m.pos == m.lastCharPos() || m.atLineEnd())
 }
@@ -49,9 +51,9 @@ func (m *mark) lastCharPos() int {
 	return len(m.buf.text[m.line]) - 2
 }
 
-// maxCursPos returns the maximum position the cursor might be on, which is the
-// newline char in insert mode or for empty lines and the last char for non empty
-// lines outside of insert mode
+// maxCursPos returns the maximum position the cursor might be on, which is left of
+//the newline char in insert mode or for empty lines and left of the last char for
+// non empty lines in normal mode
 func (m *mark) maxCursPos() int {
 	max := m.lastCharPos()
 	if m.buf.mod == insertMode || max < 0 {
@@ -214,4 +216,33 @@ func (m mark) firstTextCharPos() mark {
 func (m mark) isBefore(m2 mark) bool {
 	return m.line < m2.line ||
 		(m.line == m2.line && m.pos < m2.pos)
+}
+
+// toEndofText returns a mark at then of the text t assuming that it starts at
+// the mark m
+func (m mark) toEndofText(t text) (end mark) {
+	end.buf = m.buf
+	end.line = m.line
+	switch {
+	case t.emptyText():
+		return m
+	case len(t) == 1 && t[0][len(t[0])-1] != '\n':
+		end.pos = m.pos + len(t[0])
+	default:
+		for _, l := range t {
+			if l[len(l)-1] == '\n' {
+				end.line++
+			} else {
+				end.pos = len(l) - 1
+				return end
+			}
+		}
+	}
+	return end
+}
+
+func (m mark) isSame(m2 mark) bool {
+	return m.buf == m2.buf &&
+		m.pos == m2.pos &&
+		m.line == m2.line
 }
