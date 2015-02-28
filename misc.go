@@ -42,3 +42,20 @@ func (t text) lastChar() rune {
 	}
 	return t[len(t)-1][len(t[len(t)-1])-1]
 }
+
+// lastChar returns the last rune in line (typically a newline char)
+// or 0 if the line is empty
+func (l line) lastChar() rune {
+	if len(l) == 0 {
+		return 0
+	}
+	return l[len(l)-1]
+}
+
+// lastLIne returns the last line of text t or nil if text is empty
+func (t text) lastLine() line {
+	if t.empty() {
+		return nil
+	}
+	return t[len(t)-1]
+}

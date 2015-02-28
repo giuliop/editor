@@ -220,23 +220,22 @@ func (m mark) isBefore(m2 mark) bool {
 
 // toEndofText returns a mark at then of the text t assuming that it starts at
 // the mark m
-func (m mark) toEndofText(t text) (end mark) {
-	end.buf = m.buf
-	end.line = m.line
-	switch {
-	case t.empty():
+func (m mark) toEndofText(t text) mark {
+	if t.empty() {
 		return m
-	case len(t) == 1 && t[0][len(t[0])-1] != '\n':
+	}
+
+	end := mark{m.line, 0, m.buf}
+	if len(t) == 1 && t[0].lastChar() != '\n' {
 		end.pos = m.pos + len(t[0])
-	default:
-		for _, l := range t {
-			if l[len(l)-1] == '\n' {
-				end.line++
-			} else {
-				end.pos = len(l) - 1
-				return end
-			}
-		}
+		return end
+	}
+
+	end.line += len(t) - 1
+	if t.lastChar() == '\n' {
+		end.line++
+	} else {
+		end.pos = len(t.lastLine())
 	}
 	return end
 }

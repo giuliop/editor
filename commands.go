@@ -99,12 +99,12 @@ var cmdStringInsertMode = map[string]command{
 
 // TODO
 func XXXtempbeforemapping(ctx *cmdContext) {
-	defer ctx.point.setMode(normalMode)()
+	defer ctx.point.setMode(normalMode)(ctx.point)
 	appendAtEndOfLine(ctx)
 }
 
 func toNormalMode(ctx *cmdContext) {
-	defer ctx.point.setMode(normalMode)()
+	defer ctx.point.setMode(normalMode)(ctx.point)
 	if !ctx.point.atLineStart() {
 		ctx.point.moveLeft(1)
 	}
@@ -112,11 +112,11 @@ func toNormalMode(ctx *cmdContext) {
 }
 
 func insertAtCs(ctx *cmdContext) {
-	defer ctx.point.setMode(insertMode)()
+	defer ctx.point.setMode(insertMode)(ctx.point)
 }
 
 func appendAtCs(ctx *cmdContext) {
-	defer ctx.point.setMode(insertMode)()
+	defer ctx.point.setMode(insertMode)(ctx.point)
 	// move cursor right unless empty line
 	if !ctx.point.atEmptyLine() {
 		ctx.point.pos++
@@ -124,7 +124,7 @@ func appendAtCs(ctx *cmdContext) {
 }
 
 func appendAtEndOfLine(ctx *cmdContext) {
-	defer ctx.point.setMode(insertMode)()
+	defer ctx.point.setMode(insertMode)(ctx.point)
 	ctx.point.pos = ctx.point.lineEndPos()
 }
 

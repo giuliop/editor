@@ -64,10 +64,10 @@ func (c *changeList) undo() string {
 }
 
 func (c *changeList) redo() string {
-	c.redoMode = true
 	if c.current == len(c.ops)-1 {
 		return "Already at latest change"
 	}
+	c.redoMode = true
 	c.current++
 	ctx := c.ops[c.current].redo
 	p := *ctx.point

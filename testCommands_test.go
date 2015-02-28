@@ -614,3 +614,57 @@ func TestUndoRedoDeleteLine(t *testing.T) {
 	}
 
 }
+
+func TestUndoRedoInsert(t *testing.T) {
+	a := &asserter{}
+	b := stringToBuffer("\n")
+	e := newKeyPressEmitter(b)
+	e.emit("i", "Hello dude", KeyCtrlC, "a!", KeyCtrlC, "u")
+	a.assert("1", "text", bufferToString(b), "Hello dude\n")
+	e.emit("u")
+	a.assert("2", "text", bufferToString(b), "\n")
+	e.emit("dd")
+	e.emit("i", "Hello", KeyCtrlC, "i", " no", KeyCtrlC, "u")
+	a.assert("3", "text", bufferToString(b), "Hello\n")
+	e.emit(KeyCtrlR)
+	a.assert("4", "text", bufferToString(b), "Hell noo\n")
+	e.emit("u", "La", " dude!")
+	a.assert("5", "text", bufferToString(b), "Hello dude!\n")
+	e.emit(KeyCtrlC, "a", " What's up?")
+	a.assert("6", "text", bufferToString(b), "Hello dude! What's up?\n")
+	e.emit(KeyCtrlC, "u")
+	a.assert("7", "text", bufferToString(b), "Hello dude!\n")
+	e.emit(KeyCtrlR)
+	a.assert("8", "text", bufferToString(b), "Hello dude! What's up?\n")
+	if a.failed {
+		for _, m := range a.errMsgs {
+			t.Error(m)
+		}
+	}
+}
+
+func TestUndoRedoInsertWithBackspaceAndDelete(t *testing.T) {
+	a := &asserter{}
+	b := stringToBuffer("\n")
+	e := newKeyPressEmitter(b)
+	e.emit("i", "Hi dude!", KeyCtrlC)
+	e.emit("bi", KeyBackspace, KeyBackspace, KeyBackspace, KeyCtrlC)
+	a.assert("1", "text", bufferToString(b), "dude!\n")
+	e.emit("u")
+	a.assert("2", "text", bufferToString(b), "Hi dude!\n")
+	e.emit("0lli", KeyDelete, KeyDelete, KeyDelete, KeyDelete, KeyDelete, KeyCtrlC)
+	a.assert("3", "text", bufferToString(b), "Hi!\n")
+	e.emit(KeyCtrlR)
+	a.assert("4", "text", bufferToString(b), "Hi!\n")
+	e.emit("u")
+	a.assert("5", "text", bufferToString(b), "Hi dude!\n")
+	e.emit("Hw", "i", KeyBackspace, KeyEnter, KeyEnter, KeyCtrlC)
+	a.assert("6", "text", bufferToString(b), "Hi\n\ndude!\n")
+	e.emit("u")
+	a.assert("7", "text", bufferToString(b), "Hi dude!\n")
+	if a.failed {
+		for _, m := range a.errMsgs {
+			t.Error(m)
+		}
+	}
+}

@@ -256,9 +256,9 @@ func (from mark) copy(to mark) (text []line) {
 
 // setMode sets the buffer mode. Before doing that it calls the functions
 // exitingMode and enteringMode to hook up actions. It returns a closure
-// with the exitedMode and enteredMode to be called by the caller after
-// setting the cursor
-func (m mark) setMode(newM mode) func() {
+// with the exitedMode and enteredMode functions to be called by the caller
+// after setting the cursor
+func (m mark) setMode(newM mode) func(newCursor *mark) {
 	oldM := m.buf.mod
 	change := oldM != newM
 	if !change {
@@ -269,9 +269,9 @@ func (m mark) setMode(newM mode) func() {
 
 	m.buf.mod = newM
 
-	return func() {
+	return func(newCursor *mark) {
 		m.exitedMode(oldM)
-		m.enteredMode(newM)
+		newCursor.enteredMode(newM)
 	}
 }
 
@@ -314,11 +314,16 @@ func (m mark) enteringMode(mod mode) {
 }
 
 func (m mark) addUndoRedoLastInsert() {
+	if m.buf.lastInsert.newText.empty() && m.buf.lastInsert.oldText.empty() {
+		return
+	}
+
 	start := *m.buf.lastInsert.start
+	end := mark{m.line, m.pos, m.buf}
 	undoCtx := undoContext{
 		text:  m.buf.lastInsert.oldText,
 		start: start,
-		end:   m,
+		end:   end,
 	}
 	undoEnd := start.toEndofText(m.buf.lastInsert.oldText)
 	regF := func(m mark) (region, direction) {
