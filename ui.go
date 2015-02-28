@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 // UI is the controller for a terminal or gui frontend
 type UI interface {
 	Init(b *buffer) error
@@ -15,14 +13,6 @@ type UI interface {
 	PollEvent() UIEvent
 	CurrentBuffer() *buffer
 	userMessage(s string)
-}
-
-func selectUI(name string) (UI, error) {
-	switch name {
-	case "terminal":
-		return &terminal{"term", nil, ""}, nil
-	}
-	return nil, fmt.Errorf("Unknown frontend")
 }
 
 type UIEvent struct {

@@ -1,7 +1,10 @@
 // Editor is a great editor, or at least it will be one day!
 package main
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 var (
 	be       backend                      // the open buffers collection backend
@@ -47,6 +50,14 @@ func cleanupOnError() {
 	}
 }
 
+func selectUI(name string) (UI, error) {
+	switch name {
+	case "terminal":
+		return &terminal{}, nil
+	}
+	return nil, fmt.Errorf("Unknown frontend")
+}
+
 func initFrontEnd(activeBuf *buffer) (UI, error) {
 	ui, err := selectUI("terminal")
 	if err == nil {
@@ -79,9 +90,9 @@ func main() {
 	defer debug.stop()
 	defer cleanupOnError()
 	// initialize the user interface
-	curBuf := be.open(os.Args[1:])
+	activeBuf := be.open(os.Args[1:])
 	var err error
-	ui, err = initFrontEnd(curBuf)
+	ui, err = initFrontEnd(activeBuf)
 	check(err)
 	ui.Draw()
 	defer ui.Close()
