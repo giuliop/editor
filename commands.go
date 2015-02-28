@@ -14,6 +14,7 @@ type cmdContext struct {
 	num        int        // times to execute the command
 	cmd        cmdFunc    // the commnad to execute
 	point      *mark      // the cursor position
+	view       *view      // the view emanating the command
 	char       rune       // the last input char
 	cmdString  string     // the input string defining the command
 	argString  string     // optional input string defining the command arg
@@ -150,7 +151,6 @@ func moveCursorTo(ctx *cmdContext) {
 		r, _ := ctx.reg(*ctx.point)
 		*ctx.point = r.end
 	}
-	ctx.point.buf.cs = *ctx.point
 }
 
 func delete_(ctx *cmdContext) {
@@ -168,7 +168,6 @@ func delete_(ctx *cmdContext) {
 			}
 			*ctx.point = r.delete()
 		}
-		ctx.point.buf.cs = *ctx.point
 	}
 }
 
@@ -194,15 +193,15 @@ func deleteLine(ctx *cmdContext) {
 func deleteToStart(ctx *cmdContext) {
 	b := ctx.point.buf
 	b.deleteLines(mark{0, 0, b}, *ctx.point)
-	b.cs = mark{0, 0, b}
+	*ctx.point = mark{0, 0, b}
 }
 
 func deleteToEnd(ctx *cmdContext) {
 	b := ctx.point.buf
 	b.deleteLines(*ctx.point, mark{ctx.point.lastLine(), 0, b})
-	b.cs = mark{ctx.point.line - 1, 0, b}
-	if b.cs.line < 0 {
-		b.cs.line = 0
+	*ctx.point = mark{ctx.point.line - 1, 0, b}
+	if ctx.point.line < 0 {
+		ctx.point.line = 0
 	}
 }
 

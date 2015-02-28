@@ -40,7 +40,7 @@ func (c *changeList) add(redo cmdContext, undo undoContext) {
 	}
 }
 
-func (c *changeList) undo() string {
+func (c *changeList) undo(v *view) string {
 	if c.current == 0 {
 		return "No more changes to undo"
 	}
@@ -58,12 +58,12 @@ func (c *changeList) undo() string {
 		}
 	}
 
-	ctx.start.buf.cs = ctx.start
+	*v.cs = ctx.start
 	c.current--
 	return fmt.Sprintf("undid change #%v of %v", c.current+1, len(c.ops)-1)
 }
 
-func (c *changeList) redo() string {
+func (c *changeList) redo(v *view) string {
 	if c.current == len(c.ops)-1 {
 		return "Already at latest change"
 	}
@@ -73,20 +73,20 @@ func (c *changeList) redo() string {
 	p := *ctx.point
 	ctx.point = &p
 	pushCmd(&ctx)
-	ctx.point.buf.cs = *ctx.point
+	*v.cs = *ctx.point
 	c.redoMode = false
 	return fmt.Sprintf("redid change #%v of %v", c.current, len(c.ops)-1)
 }
 
 func undo(ctx *cmdContext) {
 	for i := 0; i < ctx.num; i++ {
-		ctx.msg = ctx.point.buf.changeList.undo()
+		ctx.msg = ctx.point.buf.changeList.undo(ctx.view)
 	}
 }
 
 func redo(ctx *cmdContext) {
 	for i := 0; i < ctx.num; i++ {
-		ctx.msg = ctx.point.buf.changeList.redo()
+		ctx.msg = ctx.point.buf.changeList.redo(ctx.view)
 	}
 }
 

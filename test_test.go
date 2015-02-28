@@ -55,33 +55,33 @@ func cleanup() {
 
 type keypressEmitter struct {
 	c chan UIEvent
-	b *buffer
+	v *view
 }
 
-func newKeyPressEmitter(b *buffer) *keypressEmitter {
-	return &keypressEmitter{c: keys, b: b}
+func newKeyPressEmitter(v *view) *keypressEmitter {
+	return &keypressEmitter{c: keys, v: v}
 }
 
 func (e keypressEmitter) emit(a ...interface{}) {
 	for _, x := range a {
 		switch x.(type) {
 		case string:
-			stringToEvents(e.b, x.(string))
+			stringToEvents(e.v, x.(string))
 		case Key:
-			keyToEvents(e.b, x.(Key))
+			keyToEvents(e.v, x.(Key))
 		default:
 			debug.Println(x)
 			panic("Unrecognized keypress type")
 		}
 	}
-	keyToEvents(e.b, endOfEmission)
+	keyToEvents(e.v, endOfEmission)
 	<-allDone
 }
 
-func stringToEvents(b *buffer, s string) {
+func stringToEvents(v *view, s string) {
 	for _, c := range s {
 		ev := UIEvent{
-			Buf:  b,
+			View: v,
 			Type: UIEventKey,
 			Key:  Keypress{Char: c},
 		}
@@ -89,9 +89,9 @@ func stringToEvents(b *buffer, s string) {
 	}
 }
 
-func keyToEvents(b *buffer, k Key) {
+func keyToEvents(v *view, k Key) {
 	ev := UIEvent{
-		Buf:  b,
+		View: v,
 		Type: UIEventKey,
 		Key:  Keypress{Special: k, isSpecial: true},
 	}
@@ -113,9 +113,9 @@ func (a *asserter) assert(title, name string, actual, expected interface{}) {
 }
 
 func stringToFile(text, filename string) {
-	b := stringToBuffer(text)
-	b.filename = filename
-	b.save()
+	v := stringToView(text)
+	v.buf.filename = filename
+	v.buf.save()
 }
 
 func stringToLines(s string) []line {
@@ -131,16 +131,16 @@ func stringToLines(s string) []line {
 	return t
 }
 
-func stringToBuffer(s string) *buffer {
+func stringToView(s string) *view {
 	b := be.newBuffer("")
 	b.text = stringToLines(s)
 	b.mod = normalMode
-	return b
+	return &view{b, &mark{0, 0, b}}
 }
 
-func bufferToString(b *buffer) string {
+func viewToString(v *view) string {
 	s := ""
-	for _, line := range b.text {
+	for _, line := range v.buf.text {
 		s += string(line)
 	}
 	return s
@@ -148,7 +148,7 @@ func bufferToString(b *buffer) string {
 
 func TestStringToBufferToString(t *testing.T) {
 	for _, s := range samples {
-		if s != bufferToString(stringToBuffer(s)) {
+		if s != viewToString(stringToView(s)) {
 			t.Fail()
 		}
 	}
@@ -161,7 +161,7 @@ func TestStringToFileToBufferToString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s != bufferToString(b) {
+	if s != viewToString(&view{b, &mark{0, 0, b}}) {
 		t.Fail()
 	}
 }

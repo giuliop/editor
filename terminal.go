@@ -31,8 +31,8 @@ type pane struct {
 }
 
 type view struct {
-	buf   *buffer
-	point *mark
+	buf *buffer
+	cs  *mark
 }
 
 func (t *terminal) Init(b *buffer) error {
@@ -56,7 +56,7 @@ func (t *terminal) Draw() {
 	t.clear()
 	// viPos tracks the visual position of chars in the line since some chars
 	// might take two spaces on screen
-	b := t.CurrentBuffer()
+	b := t.curView.buf
 	for i, line := range b.content() {
 		viPos := 0
 		for _, ch := range line {
@@ -77,8 +77,9 @@ func (t *terminal) Draw() {
 	t.messageLine()
 	//debug.Printf("line %v, maxline %v", b.cursorLine(), len(b.content())-1)
 	//debug.Printf("pos %v, maxpos %v", b.cursorPos(), len(b.content()[b.cursorLine()])-1)
-	stringBeforeCs := string(b.content()[b.cursorLine()][:b.cursorPos()])
-	t.setCursor(runewidth.StringWidth(stringBeforeCs), b.cursorLine())
+	v := t.curView
+	stringBeforeCs := string(b.content()[v.cursorLine()][:v.cursorPos()])
+	t.setCursor(runewidth.StringWidth(stringBeforeCs), v.cursorLine())
 	t.flush()
 }
 
@@ -86,9 +87,9 @@ func (t *terminal) statusLine() {
 	termw, termh := termbox.Size()
 	termw += 0
 	line := termh - 4
-	args := t.CurrentBuffer().statusLine()
+	args := t.curView.statusLine()
 	s := fmt.Sprintf("Line %v, char %v, raw line %v, total chars %v, total lines %v",
-		t.CurrentBuffer().cursorLine()+1, args[0], args[1], args[2], args[3])
+		t.curView.cursorLine()+1, args[0], args[1], args[2], args[3])
 	for i, ch := range s {
 		t.setCell(i, line, ch)
 	}
@@ -127,7 +128,7 @@ func (t *terminal) hideCursor() {
 func (t *terminal) PollEvent() UIEvent {
 	ev := termbox.PollEvent()
 	return UIEvent{
-		t.curView.buf,
+		t.curView,
 		UIEventType(ev.Type),
 		UIModifier(ev.Mod),
 		Keypress{Key(ev.Key), ev.Ch, ev.Ch == 0},
@@ -137,8 +138,4 @@ func (t *terminal) PollEvent() UIEvent {
 		ev.MouseX,
 		ev.MouseY,
 	}
-}
-
-func (t *terminal) CurrentBuffer() *buffer {
-	return t.curView.buf
 }

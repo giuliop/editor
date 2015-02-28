@@ -11,12 +11,11 @@ type UI interface {
 	//HideCursor()
 	//SetCell(x, y int, ch rune)
 	PollEvent() UIEvent
-	CurrentBuffer() *buffer
 	userMessage(s string)
 }
 
 type UIEvent struct {
-	Buf    *buffer
+	View   *view
 	Type   UIEventType // one of Event* constants
 	Mod    UIModifier  // one of Mod* constants or 0
 	Key    Keypress    // a keypress

@@ -53,7 +53,7 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 		ev             UIEvent
 	)
 	reprocess := make(chan UIEvent, 100)
-	ctx := &cmdContext{cmdChans: cmdStack{cmds, make(chan struct{}, 1)}}
+	ctx := &cmdContext{view: ev.View, cmdChans: cmdStack{cmds, make(chan struct{}, 1)}}
 	for {
 		// first we check if we need to reprocess an old keypress, if not we either
 		// wait for a new keypress or a timeout
@@ -62,7 +62,7 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 		default:
 			select {
 			case ev = <-keys:
-				ctx.point = &ev.Buf.cs
+				ctx.point = ev.View.cs
 				if r.macros.on {
 					r.macros.record(ev.Key)
 				}
@@ -75,7 +75,8 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 			reprocess <- ev
 		}
 		if nextParser == nil {
-			ctx = &cmdContext{cmdChans: cmdStack{cmds, make(chan struct{}, 1)}}
+			ctx = &cmdContext{view: ev.View,
+				cmdChans: cmdStack{cmds, make(chan struct{}, 1)}}
 			nextParser = parseAction
 		}
 	}
@@ -100,23 +101,23 @@ func parseAction(ev *UIEvent, ctx *cmdContext) (
 		}
 		return parseAction, false
 	case ev.Key.isSpecial:
-		c := lookupStringCmd(ev.Buf.mod, ctx.cmdString)
+		c := lookupStringCmd(ev.View.buf.mod, ctx.cmdString)
 		// if we have a valid command in the pipeline we'll execute it and reprocess
 		// the special key at next iteration
 		if c.cmd != nil {
 			reprocessEvent = true
 		} else {
-			c = lookupKeyCmd(ev.Buf.mod, ev.Key.Special)
+			c = lookupKeyCmd(ev.View.buf.mod, ev.Key.Special)
 		}
 		return checkCmd(c, ctx), reprocessEvent
 	case isNumber(ev.Key.Char, ctx) && ctx.cmdString == "":
 		loadNumber(ev.Key.Char, ctx)
 		return parseAction, false
 	default:
-		m := ev.Buf.mod
+		m := ev.View.buf.mod
 		ctx.char = ev.Key.Char
 		ctx.cmdString += string(ctx.char)
-		c, submatches := matchCommand(ev.Buf.mod, ctx.cmdString, ctx.customList)
+		c, submatches := matchCommand(ev.View.buf.mod, ctx.cmdString, ctx.customList)
 		ctx.customList = submatches
 		if m == insertMode {
 			// we insert the char and just delete it later if we match a command
@@ -128,7 +129,7 @@ func parseAction(ev *UIEvent, ctx *cmdContext) (
 			// if no matches, we check if we had a valid command before this char
 			// and if so execute the command and reprocess the char
 			if m == normalMode {
-				c = lookupStringCmd(ev.Buf.mod, ctx.cmdString[:len(ctx.cmdString)-1])
+				c = lookupStringCmd(ev.View.buf.mod, ctx.cmdString[:len(ctx.cmdString)-1])
 				if c.cmd != nil {
 					return checkCmd(c, ctx), true
 				}

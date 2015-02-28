@@ -49,8 +49,7 @@ func (be *backend) newBuffer(name string) *buffer {
 		name:       name,
 		changeList: changeList{ops: make([]bufferChange, 1)},
 	}
-	b.cs = newMark(b)
-	b.cs.initLastInsert()
+	newMark(b).initLastInsert()
 	b.text[0] = newLine()
 	be.bufs = append(be.bufs, b)
 	return b

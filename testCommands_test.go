@@ -40,27 +40,27 @@ func TestLineMotions(t *testing.T) {
 	a := &asserter{}
 	for _, s := range samples {
 		// test 'gg' and 'G'
-		b := stringToBuffer(s)
-		e := newKeyPressEmitter(b)
+		v := stringToView(s)
+		e := newKeyPressEmitter(v)
 		e.emit("G")
-		a.assert("G", "cs.pos", b.cs.pos, 0)
-		a.assert("G", "cs.line", b.cs.line, len(b.text)-1)
+		a.assert("G", "cs.pos", v.cs.pos, 0)
+		a.assert("G", "cs.line", v.cs.line, len(v.buf.text)-1)
 		e.emit("gg")
-		a.assert("gg", "cs.pos", b.cs.pos, 0)
-		a.assert("gg", "cs.line", b.cs.line, 0)
+		a.assert("gg", "cs.pos", v.cs.pos, 0)
+		a.assert("gg", "cs.line", v.cs.line, 0)
 		// test '$', '0', 'L', 'H',
 		e.emit("$")
-		exp := len(b.text[0]) - 2
+		exp := len(v.buf.text[0]) - 2
 		if exp < 0 {
 			exp = 0
 		}
-		a.assert("$", "cs.pos", b.cs.pos, exp)
+		a.assert("$", "cs.pos", v.cs.pos, exp)
 		e.emit("0")
-		a.assert("0", "cs.pos", b.cs.pos, 0)
+		a.assert("0", "cs.pos", v.cs.pos, 0)
 		e.emit("L")
-		a.assert("L", "cs.pos", b.cs.pos, exp)
+		a.assert("L", "cs.pos", v.cs.pos, exp)
 		e.emit("H")
-		a.assert("H", "cs.pos", b.cs.pos, 0)
+		a.assert("H", "cs.pos", v.cs.pos, 0)
 	}
 	if a.failed {
 		for _, m := range a.errMsgs {
@@ -151,15 +151,15 @@ func TestWORDMotions(t *testing.T) {
 func _testMotions(samples []string, testKeys []string, expected [][][]*quickmark) *asserter {
 	a := &asserter{}
 	for _s, s := range samples {
-		b := stringToBuffer(s)
-		e := newKeyPressEmitter(b)
+		v := stringToView(s)
+		e := newKeyPressEmitter(v)
 		for _k, k := range testKeys {
 			for i, m := range expected[_k][_s] {
 				e.emit(k)
 				head := k + " - " + strconv.Itoa(i)
-				a.assert(head, "cs.pos", b.cs.pos, m.pos)
-				a.assert(head, "cs.line", b.cs.line, m.line)
-				if b.cs.atLastTextChar() || b.cs.atStartOfText() {
+				a.assert(head, "cs.pos", v.cs.pos, m.pos)
+				a.assert(head, "cs.line", v.cs.line, m.line)
+				if v.cs.atLastTextChar() || v.cs.atStartOfText() {
 					a.assert(k, "all marks consummed", i == len(expected[_k][_s])-1, true)
 				}
 			}
@@ -169,40 +169,40 @@ func _testMotions(samples []string, testKeys []string, expected [][][]*quickmark
 }
 
 func TestInsert(t *testing.T) {
-	b := stringToBuffer("123")
-	e := newKeyPressEmitter(b)
+	v := stringToView("123")
+	e := newKeyPressEmitter(v)
 	e.emit("li0")
-	err := equalStrings(bufferToString(b), "1023\n")
+	err := equalStrings(viewToString(v), "1023\n")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 }
 
 func TestAppend(t *testing.T) {
-	b := stringToBuffer("123")
-	e := newKeyPressEmitter(b)
+	v := stringToView("123")
+	e := newKeyPressEmitter(v)
 	e.emit("la0")
-	err := equalStrings(bufferToString(b), "1203\n")
+	err := equalStrings(viewToString(v), "1203\n")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 }
 
 func TestAppendEndOfLine(t *testing.T) {
-	b := stringToBuffer("123")
-	e := newKeyPressEmitter(b)
+	v := stringToView("123")
+	e := newKeyPressEmitter(v)
 	e.emit("lA0")
-	err := equalStrings(bufferToString(b), "1230\n")
+	err := equalStrings(viewToString(v), "1230\n")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 }
 
 func TestAppendEndOfLineInsertMode(t *testing.T) {
-	b := stringToBuffer("123")
-	e := newKeyPressEmitter(b)
+	v := stringToView("123")
+	e := newKeyPressEmitter(v)
 	e.emit("liAA0")
-	err := equalStrings(bufferToString(b), "1230\n")
+	err := equalStrings(viewToString(v), "1230\n")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -234,8 +234,8 @@ func equalStrings(actual, expected string) error {
 }
 
 func TestMultiInsertAppend(t *testing.T) {
-	b := stringToBuffer(defaultText)
-	e := newKeyPressEmitter(b)
+	v := stringToView(defaultText)
+	e := newKeyPressEmitter(v)
 	e.emit("2l", "A", "ggg", KeyCtrlC, "j", "5h", "l", "i", "c",
 		"A", "A", "v", KeyCtrlC, "j", "i", "c", KeyCtrlC, "2j", "a", "d")
 	expected := "" +
@@ -246,15 +246,15 @@ func TestMultiInsertAppend(t *testing.T) {
 		"*d\n" +
 		" _ \n" +
 		"non c'e' male, davvero .... \n"
-	err := equalStrings(bufferToString(b), expected)
+	err := equalStrings(viewToString(v), expected)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 }
 
 func TestDeleteToEndAndStartOfLine(t *testing.T) {
-	b := stringToBuffer(defaultText)
-	e := newKeyPressEmitter(b)
+	v := stringToView(defaultText)
+	e := newKeyPressEmitter(v)
 	e.emit("j", "5l", "d", "L", "j", "d", "L", "d", "H", "j", "9l",
 		"d", "H", "j", "d", "H", "d", "L", "2j", "22l", "d", "L", "d", "H")
 	expected := "" +
@@ -265,7 +265,7 @@ func TestDeleteToEndAndStartOfLine(t *testing.T) {
 		"\n" +
 		" _ \n" +
 		"o\n"
-	err := equalStrings(bufferToString(b), expected)
+	err := equalStrings(viewToString(v), expected)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -528,10 +528,10 @@ func TestDeleteToWORDStart(t *testing.T) {
 
 func _testStrings(actuals, expected []string, commands [][]interface{}) error {
 	for i, a := range actuals {
-		b := stringToBuffer(a)
-		e := newKeyPressEmitter(b)
+		v := stringToView(a)
+		e := newKeyPressEmitter(v)
 		e.emit(commands[i]...)
-		err := equalStrings(bufferToString(b), expected[i])
+		err := equalStrings(viewToString(v), expected[i])
 		if err != nil {
 			return fmt.Errorf("Error at test %v: %v", i, err)
 		}
@@ -617,25 +617,25 @@ func TestUndoRedoDeleteLine(t *testing.T) {
 
 func TestUndoRedoInsert(t *testing.T) {
 	a := &asserter{}
-	b := stringToBuffer("\n")
-	e := newKeyPressEmitter(b)
+	v := stringToView("\n")
+	e := newKeyPressEmitter(v)
 	e.emit("i", "Hello dude", KeyCtrlC, "a!", KeyCtrlC, "u")
-	a.assert("1", "text", bufferToString(b), "Hello dude\n")
+	a.assert("1", "text", viewToString(v), "Hello dude\n")
 	e.emit("u")
-	a.assert("2", "text", bufferToString(b), "\n")
+	a.assert("2", "text", viewToString(v), "\n")
 	e.emit("dd")
 	e.emit("i", "Hello", KeyCtrlC, "i", " no", KeyCtrlC, "u")
-	a.assert("3", "text", bufferToString(b), "Hello\n")
+	a.assert("3", "text", viewToString(v), "Hello\n")
 	e.emit(KeyCtrlR)
-	a.assert("4", "text", bufferToString(b), "Hell noo\n")
+	a.assert("4", "text", viewToString(v), "Hell noo\n")
 	e.emit("u", "La", " dude!")
-	a.assert("5", "text", bufferToString(b), "Hello dude!\n")
+	a.assert("5", "text", viewToString(v), "Hello dude!\n")
 	e.emit(KeyCtrlC, "a", " What's up?")
-	a.assert("6", "text", bufferToString(b), "Hello dude! What's up?\n")
+	a.assert("6", "text", viewToString(v), "Hello dude! What's up?\n")
 	e.emit(KeyCtrlC, "u")
-	a.assert("7", "text", bufferToString(b), "Hello dude!\n")
+	a.assert("7", "text", viewToString(v), "Hello dude!\n")
 	e.emit(KeyCtrlR)
-	a.assert("8", "text", bufferToString(b), "Hello dude! What's up?\n")
+	a.assert("8", "text", viewToString(v), "Hello dude! What's up?\n")
 	if a.failed {
 		for _, m := range a.errMsgs {
 			t.Error(m)
@@ -645,23 +645,23 @@ func TestUndoRedoInsert(t *testing.T) {
 
 func TestUndoRedoInsertWithBackspaceAndDelete(t *testing.T) {
 	a := &asserter{}
-	b := stringToBuffer("\n")
-	e := newKeyPressEmitter(b)
+	v := stringToView("\n")
+	e := newKeyPressEmitter(v)
 	e.emit("i", "Hi dude!", KeyCtrlC)
 	e.emit("bi", KeyBackspace, KeyBackspace, KeyBackspace, KeyCtrlC)
-	a.assert("1", "text", bufferToString(b), "dude!\n")
+	a.assert("1", "text", viewToString(v), "dude!\n")
 	e.emit("u")
-	a.assert("2", "text", bufferToString(b), "Hi dude!\n")
+	a.assert("2", "text", viewToString(v), "Hi dude!\n")
 	e.emit("0lli", KeyDelete, KeyDelete, KeyDelete, KeyDelete, KeyDelete, KeyCtrlC)
-	a.assert("3", "text", bufferToString(b), "Hi!\n")
+	a.assert("3", "text", viewToString(v), "Hi!\n")
 	e.emit(KeyCtrlR)
-	a.assert("4", "text", bufferToString(b), "Hi!\n")
+	a.assert("4", "text", viewToString(v), "Hi!\n")
 	e.emit("u")
-	a.assert("5", "text", bufferToString(b), "Hi dude!\n")
+	a.assert("5", "text", viewToString(v), "Hi dude!\n")
 	e.emit("Hw", "i", KeyBackspace, KeyEnter, KeyEnter, KeyCtrlC)
-	a.assert("6", "text", bufferToString(b), "Hi\n\ndude!\n")
+	a.assert("6", "text", viewToString(v), "Hi\n\ndude!\n")
 	e.emit("u")
-	a.assert("7", "text", bufferToString(b), "Hi dude!\n")
+	a.assert("7", "text", viewToString(v), "Hi dude!\n")
 	if a.failed {
 		for _, m := range a.errMsgs {
 			t.Error(m)

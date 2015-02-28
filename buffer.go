@@ -8,7 +8,6 @@ import (
 // buffer is the representation of an open buffer
 type buffer struct {
 	text       text
-	cs         mark
 	marks      []mark
 	mod        mode
 	name       string
@@ -56,19 +55,19 @@ func (b *buffer) content() []line {
 }
 
 // cursorline returns the line number of the buffer cursor
-func (b *buffer) cursorLine() int {
-	return b.cs.line
+func (v *view) cursorLine() int {
+	return v.cs.line
 }
 
 // cursorPos returns the pos number of the buffer cursor
-func (b *buffer) cursorPos() int {
-	return b.cs.pos
+func (v *view) cursorPos() int {
+	return v.cs.pos
 }
 
 // statusLine returns the buffer statusline
-func (b *buffer) statusLine() []interface{} {
-	cs := b.cs
-	return []interface{}{cs.pos + 1, fmt.Sprintf("%q", b.text[cs.line]),
+func (v *view) statusLine() []interface{} {
+	cs := v.cs
+	return []interface{}{cs.pos + 1, fmt.Sprintf("%q", v.buf.text[cs.line]),
 		cs.lastCharPos() + 1, cs.lastLine() + 1}
 }
 
