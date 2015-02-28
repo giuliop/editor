@@ -10,13 +10,34 @@ import (
 const defCol = termbox.ColorDefault
 
 type terminal struct {
-	name    string
-	curBuf  *buffer
+	curView *view
+	panes   pane
 	message string // to hold messages to display to user
 }
 
+type splitType int
+
+const (
+	nosplit splitType = iota
+	horizontal
+	vertical
+)
+
+type pane struct {
+	split  splitType
+	view   *view // if split != nosplit this is nil
+	first  *pane // left or top split, or nil
+	second *pane // right or bottom split, or nil
+}
+
+type view struct {
+	buf   *buffer
+	point *mark
+}
+
 func (t *terminal) Init(b *buffer) error {
-	t.curBuf = b
+	t.panes = pane{nosplit, &view{b, &mark{0, 0, b}}, nil, nil}
+	t.curView = t.panes.view
 	return termbox.Init()
 }
 
@@ -77,7 +98,7 @@ func (t *terminal) messageLine() {
 	termw, termh := termbox.Size()
 	termw += 0
 	line := termh - 2
-	s := t.curBuf.name + " - " + t.curBuf.filename + " - " + t.message
+	s := t.curView.buf.name + " - " + t.curView.buf.filename + " - " + t.message
 	for i, ch := range s {
 		t.setCell(i, line, ch)
 	}
@@ -106,7 +127,7 @@ func (t *terminal) hideCursor() {
 func (t *terminal) PollEvent() UIEvent {
 	ev := termbox.PollEvent()
 	return UIEvent{
-		t.curBuf,
+		t.curView.buf,
 		UIEventType(ev.Type),
 		UIModifier(ev.Mod),
 		Keypress{Key(ev.Key), ev.Ch, ev.Ch == 0},
@@ -119,5 +140,5 @@ func (t *terminal) PollEvent() UIEvent {
 }
 
 func (t *terminal) CurrentBuffer() *buffer {
-	return t.curBuf
+	return t.curView.buf
 }
