@@ -210,20 +210,11 @@ func (r region) replace(newText text) {
 
 // insertText inserts the text at mark
 func (m mark) insertText(text text) {
-	if len(text) == 0 {
+	if text.empty() {
 		return
 	}
 
 	b := m.buf
-	//emptyBuf := len(b.text) == 1 && b.text[0][0] == '\n'
-	//if emptyBuf {
-	//b.text = append([]line{}, text...)
-	//if b.text.lastChar() != '\n' {
-	//b.text.appendChar('\n')
-	//}
-	//return
-	//}
-
 	if m.line > m.maxLine() {
 		b.text = append(b.text, line{})
 	}
@@ -232,7 +223,6 @@ func (m mark) insertText(text text) {
 	seg1 := b.text[:m.line+1]
 	seg2 := text[1:]
 	seg3 := b.text[m.line+1:]
-	//debug.Printf("seg3 %q, len %v", seg3, len(seg3))
 	if len(suffix) > 0 {
 		switch {
 		case seg1.lastChar() != '\n':
@@ -253,29 +243,33 @@ func (m mark) insertText(text text) {
 func (from mark) copy(to mark) (text []line) {
 	start, end := orderMarks(from, to)
 	if start.line == end.line {
-		text = append(text, start.buf.text[start.line][start.pos:end.pos+1])
+		text = append(text, start.buf.text[start.line][start.pos:end.pos])
 		return text
 	}
 	text = append(text, start.buf.text[start.line][start.pos:])
 	for i := start.line + 1; i < end.line; i++ {
 		text = append(text, start.buf.text[i])
 	}
-	text = append(text, start.buf.text[end.line][:end.pos+1])
+	text = append(text, start.buf.text[end.line][:end.pos])
 	return text
 }
 
-// setMode sets the buffer mode. If we enter insertMode we reset the insertText field
-// so that we can record a new insert session
-func (m mark) setMode(newM mode) {
+// setMode sets the buffer mode. Before doing that it calls the functions
+// exitingMode and enteringMode to hook up actions. It returns a closure
+// with the exitedMode and enteredMode to be called by the caller after
+// setting the cursor
+func (m mark) setMode(newM mode) func() {
 	oldM := m.buf.mod
 	change := oldM != newM
-	// TODO note that the cursor has already being moved!
-	if change {
-		m.exitingMode()
-		m.enteringMode(newM)
+	if !change {
+		return nil
 	}
+	m.exitingMode()
+	m.enteringMode(newM)
+
 	m.buf.mod = newM
-	if change {
+
+	return func() {
 		m.exitedMode(oldM)
 		m.enteredMode(newM)
 	}
@@ -285,24 +279,37 @@ func (m mark) enteredMode(mod mode) {
 	switch mod {
 	case insertMode:
 		m.initLastInsert()
+		//debug.Println("entered insertMode\n")
+	case normalMode:
+		//debug.Println("entered normalMode\n")
 	}
 }
 
 func (m mark) exitedMode(mod mode) {
 	switch mod {
 	case insertMode:
-		m.addUndoRedoLastInsert()
+		//debug.Println("exited insertMode")
+	case normalMode:
+		//debug.Println("exited normalMode")
 	}
 }
 
 func (m mark) exitingMode() {
 	switch m.buf.mod {
 	case insertMode:
+		//debug.Println("exiting insertMode")
+		m.addUndoRedoLastInsert()
+	case normalMode:
+		//debug.Println("exiting normalMode")
 	}
 }
 
 func (m mark) enteringMode(mod mode) {
-	switch m.buf.mod {
+	switch mod {
+	case insertMode:
+		//debug.Println("entering insertMode")
+	case normalMode:
+		//debug.Println("entering normalMode")
 	}
 }
 
@@ -325,10 +332,6 @@ func (m mark) addUndoRedoLastInsert() {
 		text:     m.buf.lastInsert.newText,
 		reg:      regF,
 		cmdChans: cmdStack{commands, make(chan struct{}, 1)},
-	}
-	// if same start and end we don't want to delete char under mark
-	if start.isSame(undoEnd) {
-		redoCtx.cmd = paste
 	}
 	m.buf.changeList.add(newRedoCtx(redoCtx), undoCtx)
 }

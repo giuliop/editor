@@ -224,7 +224,7 @@ func (m mark) toEndofText(t text) (end mark) {
 	end.buf = m.buf
 	end.line = m.line
 	switch {
-	case t.emptyText():
+	case t.empty():
 		return m
 	case len(t) == 1 && t[0][len(t[0])-1] != '\n':
 		end.pos = m.pos + len(t[0])

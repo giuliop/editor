@@ -49,7 +49,7 @@ func (c *changeList) undo() string {
 	if ctx.end.buf != nil {
 		region{ctx.start, ctx.end}.delete()
 	}
-	if !text(ctx.text).emptyText() {
+	if !text(ctx.text).empty() {
 		ctx.start.insertText(ctx.text)
 	} else {
 		// if we can we move left the cursor to place it before the deleted text

@@ -99,33 +99,33 @@ var cmdStringInsertMode = map[string]command{
 
 // TODO
 func XXXtempbeforemapping(ctx *cmdContext) {
-	ctx.point.setMode(normalMode)
+	defer ctx.point.setMode(normalMode)()
 	appendAtEndOfLine(ctx)
 }
 
 func toNormalMode(ctx *cmdContext) {
+	defer ctx.point.setMode(normalMode)()
 	if !ctx.point.atLineStart() {
 		ctx.point.moveLeft(1)
 	}
-	ctx.point.setMode(normalMode)
 	ctx.msg = "Normal mode"
 }
 
 func insertAtCs(ctx *cmdContext) {
-	ctx.point.setMode(insertMode)
+	defer ctx.point.setMode(insertMode)()
 }
 
 func appendAtCs(ctx *cmdContext) {
+	defer ctx.point.setMode(insertMode)()
 	// move cursor right unless empty line
 	if !ctx.point.atEmptyLine() {
 		ctx.point.pos++
 	}
-	ctx.point.setMode(insertMode)
 }
 
 func appendAtEndOfLine(ctx *cmdContext) {
+	defer ctx.point.setMode(insertMode)()
 	ctx.point.pos = ctx.point.lineEndPos()
-	ctx.point.setMode(insertMode)
 }
 
 func moveCursorLeft(ctx *cmdContext) {
@@ -180,9 +180,9 @@ func deleteLine(ctx *cmdContext) {
 	}
 
 	// add undo info
-	start, end := mark{p.line, 0, p.buf}, mark{toline, 0, p.buf}
-	end.pos = end.lineEndPos()
-	p.buf.changeList.add(*ctx, undoContext{start.copy(end), start, mark{}})
+	start := mark{p.line, 0, p.buf}
+	text := text{append(line{}, p.buf.text[p.line]...)}
+	p.buf.changeList.add(*ctx, undoContext{text, start, mark{}})
 
 	p.buf.deleteLines(*p, mark{toline, 0, p.buf})
 	if p.line > p.maxLine() {
@@ -215,22 +215,10 @@ func deleteCharForward(ctx *cmdContext) {
 		ctx.point.deleteCharForward()
 		ctx.point.fixPos()
 	}
-	// TODO update lastInsert
 }
 
 func deleteCharBackward(ctx *cmdContext) {
 	*ctx.point = ctx.point.deleteCharBackward()
-
-	// update lastInsert
-	//i := &ctx.point.buf.lastInsert
-	//lastLine := len(i.text) - 1
-	//if len(i.text[lastLine]) == 0 {
-	//if len(i.text) > 1 {
-	//i.text = i.text[:lastLine]
-	//}
-	//} else {
-	//i.text[lastLine] = i.text[lastLine][:len(i.text[lastLine])-1]
-	//}
 }
 
 func insertTab(ctx *cmdContext) {
