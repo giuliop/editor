@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	defCol      = termbox.ColorDefault
-	statusLines = 5
+	defCol = termbox.ColorDefault
 )
 
 type terminal struct {
@@ -50,16 +49,29 @@ func (t *terminal) userMessage(s string) {
 
 func (t *terminal) Draw() {
 	t.clear()
+
+	w, h := termbox.Size()
+	var textLines int
+	switch h {
+	case 1:
+		textLines = 1
+	case 2:
+		textLines = 1
+		t.statusLine(h-1, w)
+	default:
+		textLines = h - 2
+		t.statusLine(h-2, w)
+		t.messageLine(h - 1)
+	}
+
 	v := t.curView
 	text := t.curView.buf.content()
-	_, h := termbox.Size()
-	linesVisible := h - statusLines
-	v.fixScroll(linesVisible)
-	endline := v.startline + linesVisible - 1
+	v.fixScroll(textLines)
+	endline := v.startline + textLines - 1
 	if endline > len(text)-1 {
 		endline = len(text) - 1
 	}
-	debug.Println(v.startline, endline, len(text))
+
 	for i, line := range text[v.startline : endline+1] {
 		// viPos tracks the visual position of chars in the line since some chars
 		// might take more than one space on screen
@@ -69,31 +81,26 @@ func (t *terminal) Draw() {
 			viPos += runewidth.RuneWidth(ch)
 		}
 	}
-	t.statusLine()
-	t.messageLine()
-	//debug.Printf("line %v, maxline %v", b.cursorLine(), len(b.content())-1)
-	//debug.Printf("pos %v, maxpos %v", b.cursorPos(), len(b.content()[b.cursorLine()])-1)
+
 	stringBeforeCs := string(text[v.cursorLine()][:v.cursorPos()])
 	t.setCursor(runewidth.StringWidth(stringBeforeCs), v.cursorLine()-v.startline)
+
 	t.flush()
 }
 
-func (t *terminal) statusLine() {
-	termw, termh := termbox.Size()
-	termw += 0
-	line := termh - 4
+func (t *terminal) statusLine(line, width int) {
 	args := t.curView.statusLine()
 	s := fmt.Sprintf("Line %v, char %v, raw line %v, total chars %v, total lines %v",
 		t.curView.cursorLine()+1, args[0], args[1], args[2], args[3])
 	for i, ch := range s {
-		t.setCell(i, line, ch)
+		t.setCellWithColor(i, line, ch, termbox.ColorBlack, termbox.ColorWhite)
+	}
+	for i := len(s); i < width; i++ {
+		t.setCellWithColor(i, line, ' ', termbox.ColorBlack, termbox.ColorWhite)
 	}
 }
 
-func (t *terminal) messageLine() {
-	termw, termh := termbox.Size()
-	termw += 0
-	line := termh - 2
+func (t *terminal) messageLine(line int) {
 	s := t.curView.buf.name + " - " + t.curView.buf.filename + " - " + t.message
 	for i, ch := range s {
 		t.setCell(i, line, ch)
@@ -114,6 +121,10 @@ func (t *terminal) setCursor(x, y int) {
 
 func (t *terminal) setCell(x, y int, ch rune) {
 	termbox.SetCell(x, y, ch, defCol, defCol)
+}
+
+func (t *terminal) setCellWithColor(x, y int, ch rune, fg, bg termbox.Attribute) {
+	termbox.SetCell(x, y, ch, fg, bg)
 }
 
 func (t *terminal) hideCursor() {

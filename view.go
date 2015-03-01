@@ -8,6 +8,8 @@ type view struct {
 	startline int
 }
 
+const cursorLinesToMargin = 3
+
 // cursorline returns the line number of the buffer cursor
 func (v *view) cursorLine() int {
 	return v.cs.line
@@ -29,9 +31,14 @@ func (v *view) statusLine() []interface{} {
 // fits in the passed number of lines
 func (v *view) fixScroll(lines int) {
 	switch {
-	case v.cs.line < v.startline:
-		v.startline = v.cs.line
-	case v.cs.line-v.startline > lines-1:
-		v.startline = v.cs.line
+	case lines < cursorLinesToMargin+1:
+		v.startline = v.cs.line - (lines / 2)
+	case v.cs.line < v.startline+cursorLinesToMargin:
+		v.startline = v.cs.line - cursorLinesToMargin
+	case v.cs.line-v.startline > lines-cursorLinesToMargin-1:
+		v.startline = v.cs.line - lines + cursorLinesToMargin
+	}
+	if v.startline < 0 {
+		v.startline = 0
 	}
 }
