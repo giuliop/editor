@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/mattn/go-runewidth"
 	"github.com/nsf/termbox-go"
 )
 
 const (
-	defCol  = termbox.ColorDefault
-	tabStop = 4
+	defCol        = termbox.ColorDefault
+	tabStop       = 4
+	lineNumString = "    " // we use four chars for line numbers
 )
 
 type terminal struct {
@@ -76,7 +78,12 @@ func (t *terminal) Draw() {
 	for i, line := range text[v.startline : endline+1] {
 		// viPos tracks the visual position of chars in the line since some chars
 		// might take more than one space on screen
-		viPos := 0
+		lineNum := strconv.Itoa(v.relativeLineNumber(v.startline + i))
+		lineNum = lineNumString[:len(lineNumString)-len(lineNum)-1] + lineNum + " "
+		for j, ch := range lineNum {
+			t.setCellWithColor(j, i, ch, termbox.ColorBlack, termbox.ColorWhite)
+		}
+		viPos := len(lineNumString)
 		for _, ch := range line {
 			t.setCell(viPos, i, ch)
 			switch ch {
@@ -89,7 +96,8 @@ func (t *terminal) Draw() {
 	}
 
 	stringBeforeCs := string(text[v.cursorLine()][:v.cursorPos()])
-	t.setCursor(runewidth.StringWidth(stringBeforeCs), v.cursorLine()-v.startline)
+	t.setCursor(runewidth.StringWidth(stringBeforeCs)+len(lineNumString),
+		v.cursorLine()-v.startline)
 
 	t.flush()
 }

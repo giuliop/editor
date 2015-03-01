@@ -42,3 +42,11 @@ func (v *view) fixScroll(lines int) {
 		v.startline = 0
 	}
 }
+
+func (v *view) relativeLineNumber(line int) int {
+	rel := line - v.cs.line
+	if rel < 0 {
+		rel *= -1
+	}
+	return rel
+}
