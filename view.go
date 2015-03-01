@@ -8,7 +8,7 @@ type view struct {
 	startline int
 }
 
-const cursorLinesToMargin = 3
+const cursorLinesToMargin = 5
 
 // cursorline returns the line number of the buffer cursor
 func (v *view) cursorLine() int {

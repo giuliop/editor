@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	defCol = termbox.ColorDefault
+	defCol  = termbox.ColorDefault
+	tabStop = 4
 )
 
 type terminal struct {
@@ -78,7 +79,12 @@ func (t *terminal) Draw() {
 		viPos := 0
 		for _, ch := range line {
 			t.setCell(viPos, i, ch)
-			viPos += runewidth.RuneWidth(ch)
+			switch ch {
+			case '\t':
+				viPos += tabStop
+			default:
+				viPos += runewidth.RuneWidth(ch)
+			}
 		}
 	}
 
