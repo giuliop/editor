@@ -135,7 +135,7 @@ func stringToView(s string) *view {
 	b := be.newBuffer("")
 	b.text = stringToLines(s)
 	b.mod = normalMode
-	return &view{b, &mark{0, 0, b}}
+	return &view{b, &mark{0, 0, b}, 0}
 }
 
 func viewToString(v *view) string {
@@ -161,7 +161,7 @@ func TestStringToFileToBufferToString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s != viewToString(&view{b, &mark{0, 0, b}}) {
+	if s != viewToString(&view{b, &mark{0, 0, b}, 0}) {
 		t.Fail()
 	}
 }

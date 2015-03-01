@@ -7,7 +7,10 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-const defCol = termbox.ColorDefault
+const (
+	defCol      = termbox.ColorDefault
+	statusLines = 5
+)
 
 type terminal struct {
 	curView *view
@@ -30,14 +33,9 @@ type pane struct {
 	second *pane // right or bottom split, or nil
 }
 
-type view struct {
-	buf *buffer
-	cs  *mark
-}
-
 func (t *terminal) Init(b *buffer) error {
-	t.panes = pane{nosplit, &view{b, &mark{0, 0, b}}, nil, nil}
-	t.curView = t.panes.view
+	t.curView = &view{buf: b, cs: &mark{0, 0, b}, startline: 0}
+	t.panes = pane{nosplit, t.curView, nil, nil}
 	return termbox.Init()
 }
 
@@ -51,35 +49,32 @@ func (t *terminal) userMessage(s string) {
 }
 
 func (t *terminal) Draw() {
-	var _debug bool
-	//_debug = true
 	t.clear()
-	// viPos tracks the visual position of chars in the line since some chars
-	// might take two spaces on screen
-	b := t.curView.buf
-	for i, line := range b.content() {
+	v := t.curView
+	text := t.curView.buf.content()
+	_, h := termbox.Size()
+	linesVisible := h - statusLines
+	v.fixScroll(linesVisible)
+	endline := v.startline + linesVisible - 1
+	if endline > len(text)-1 {
+		endline = len(text) - 1
+	}
+	debug.Println(v.startline, endline, len(text))
+	for i, line := range text[v.startline : endline+1] {
+		// viPos tracks the visual position of chars in the line since some chars
+		// might take more than one space on screen
 		viPos := 0
 		for _, ch := range line {
 			t.setCell(viPos, i, ch)
 			viPos += runewidth.RuneWidth(ch)
 		}
 	}
-	if _debug {
-		offset := 80
-		for l, line := range b.content() {
-			s := fmt.Sprintf("%q", line)
-			for c, ch := range s {
-				t.setCell(c+offset, l, ch)
-			}
-		}
-	}
 	t.statusLine()
 	t.messageLine()
 	//debug.Printf("line %v, maxline %v", b.cursorLine(), len(b.content())-1)
 	//debug.Printf("pos %v, maxpos %v", b.cursorPos(), len(b.content()[b.cursorLine()])-1)
-	v := t.curView
-	stringBeforeCs := string(b.content()[v.cursorLine()][:v.cursorPos()])
-	t.setCursor(runewidth.StringWidth(stringBeforeCs), v.cursorLine())
+	stringBeforeCs := string(text[v.cursorLine()][:v.cursorPos()])
+	t.setCursor(runewidth.StringWidth(stringBeforeCs), v.cursorLine()-v.startline)
 	t.flush()
 }
 
