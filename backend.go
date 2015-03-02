@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 	"unicode/utf8"
@@ -19,6 +20,16 @@ type backend struct {
 func initBackend() backend {
 	be := backend{}
 	return be
+}
+
+type filetype int
+
+const (
+	_go filetype = iota
+)
+
+var filetypes = map[string]filetype{
+	"go": _go,
 }
 
 // open takes a list of filenames and open a buffer for each returning the
@@ -108,20 +119,22 @@ func (br *bufReader) Read(p []byte) (n int, err error) {
 // backend buffer list, returning a pointer to its buffer or an error
 func (be *backend) openFile(filename string) (*buffer, error) {
 	b := be.newBuffer(filename)
-	path, err := filepath.Abs(filename)
+	fp, err := filepath.Abs(filename)
 	if err != nil {
 		fatalError(err)
 	}
-	b.filename = path
+	b.filename = fp
+	b.name = path.Base(fp)
+	b.filetype = filetypes[path.Ext(fp)]
 	errPrefix := "Hmpf, I cannot open the file '%v', "
-	f, err := os.Open(path)
+	f, err := os.Open(fp)
 	switch {
 	case os.IsNotExist(err):
 		return b, nil
 	case os.IsPermission(err):
-		return nil, fmt.Errorf(errPrefix+"we do not have access rights", path)
+		return nil, fmt.Errorf(errPrefix+"we do not have access rights", fp)
 	case err != nil:
-		return nil, fmt.Errorf(errPrefix+"got this error:\n%v\n", path, err)
+		return nil, fmt.Errorf(errPrefix+"got this error:\n%v\n", fp, err)
 	}
 	defer f.Close()
 
@@ -132,7 +145,7 @@ func (be *backend) openFile(filename string) (*buffer, error) {
 		b.text = append(b.text, []rune(sc.Text()+"\n"))
 	}
 	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf(errPrefix+"got this error:\n%v\n", path, err)
+		return nil, fmt.Errorf(errPrefix+"got this error:\n%v\n", fp, err)
 	}
 	if len(b.text) == 0 {
 		b.text[0] = newLine()

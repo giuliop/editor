@@ -9,6 +9,7 @@ type buffer struct {
 	mod        mode
 	name       string
 	filename   string
+	filetype   filetype
 	fileSync   time.Time
 	modified   bool       // true if not synched with file
 	changeList changeList // for undo / redo (TODO make it file based)

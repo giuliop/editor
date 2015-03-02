@@ -233,6 +233,7 @@ func insertSpace(ctx *cmdContext) {
 func insertNewLine(ctx *cmdContext) {
 	ctx.point.insertNewLineChar()
 	ctx.point.set(ctx.point.line+1, 0)
+	ctx.point.indentLine()
 }
 
 func insertChar(ctx *cmdContext) {
