@@ -35,29 +35,8 @@ var regionFuncs = map[string]regionFunc{
 //"aw": aword,
 }
 
-/*
- *var (
- *    WORDEnd = regexp.MustCompile(`[\P{Zs}][\p{Zs}\n]`)
- *    // a non-space, non-newline preceded by either a space or start of text
- *    WORDStart       = regexp.MustCompile(`(?:\A|\p{Zs})([^\p{Zs}\n])`)
- *    wordEnd         *regexp.Regexp
- *    symbolWordEnd   *regexp.Regexp
- *    wordStart       *regexp.Regexp
- *    symbolWordStart *regexp.Regexp
- *)
- *s := ``
- *for r := range specialWordChars {
- *    s += string(r)
- *}
- *wordEnd = regexp.MustCompile(`[\pL\d` + s + `][^\pL\d` + s + `]`)
- *symbolWordEnd = regexp.MustCompile(`[^\pL\d\n\p{Zs}` + s + `][\pL\d\n\p{Zs}` + s + `]`)
- *wordStart = regexp.MustCompile(`(?:\A|[^\pL\d` + s + `])([\pL\d` + s + `])`)
- *symbolWordStart = regexp.MustCompile(`(?:\A|[\pL\d\p{Zs}` + s + `])([^\pL\d\p{Zs}` + s + `])`)
- */
-
-// we add all motiond to RegionFuncs since all motions are regionFuncs but not
-
-// vicecersa; we also compile motion regexp
+// we add all motions to RegionFuncs since all motions are regionFuncs but not
+// vicecersa
 func init() {
 	for k, f := range motions {
 		regionFuncs[k] = f

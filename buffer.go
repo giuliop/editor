@@ -77,6 +77,12 @@ func (m mark) insertNewLineChar() {
 	b.lastInsert.newText.appendChar('\n')
 }
 
+func (m mark) insertTab() {
+	for _, r := range tab {
+		m.insertChar(r)
+	}
+}
+
 // insertLineBelow inserts a line belor the mark
 func (m mark) insertLineBelow() {
 	b := m.buf

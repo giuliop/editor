@@ -10,7 +10,6 @@ import (
 
 const (
 	defCol        = termbox.ColorDefault
-	tabStop       = 4
 	lineNumString = "    " // we use four chars for line numbers
 )
 
@@ -86,17 +85,12 @@ func (t *terminal) Draw() {
 		viPos := len(lineNumString)
 		for _, ch := range line {
 			t.setCell(viPos, i, ch)
-			switch ch {
-			case '\t':
-				viPos += tabStop
-			default:
-				viPos += runewidth.RuneWidth(ch)
-			}
+			viPos += runeWidth(ch)
 		}
 	}
 
-	stringBeforeCs := string(text[v.cursorLine()][:v.cursorPos()])
-	t.setCursor(runewidth.StringWidth(stringBeforeCs)+len(lineNumString),
+	lineBeforeCs := text[v.cursorLine()][:v.cursorPos()]
+	t.setCursor(lineVisualWidth(lineBeforeCs)+len(lineNumString),
 		v.cursorLine()-v.startline)
 
 	t.flush()
@@ -158,4 +152,22 @@ func (t *terminal) PollEvent() UIEvent {
 		ev.MouseX,
 		ev.MouseY,
 	}
+}
+
+// runeWidth returns the number of visual spaces the rune takes on screen
+func runeWidth(r rune) int {
+	switch r {
+	case '\t':
+		return tabStop
+	default:
+		return runewidth.RuneWidth(r)
+	}
+}
+
+// lineVisualWidth returns the number of visual spaces taken by the line ln
+func lineVisualWidth(ln line) (i int) {
+	for _, r := range ln {
+		i += runeWidth(r)
+	}
+	return i
 }

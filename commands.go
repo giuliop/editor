@@ -78,6 +78,7 @@ var cmdStringNormalMode = map[string]command{
 	"G":  command{moveCursorTo, nil},
 	"m":  command{recordMacro, nil},
 	"u":  command{undo, nil},
+	"=":  command{indent, nil},
 	//"p":  command{paste, nil},
 }
 
@@ -221,7 +222,7 @@ func deleteCharBackward(ctx *cmdContext) {
 }
 
 func insertTab(ctx *cmdContext) {
-	ctx.point.insertChar('\t')
+	ctx.point.insertTab()
 	ctx.point.moveRight(1)
 }
 
@@ -233,12 +234,15 @@ func insertSpace(ctx *cmdContext) {
 func insertNewLine(ctx *cmdContext) {
 	ctx.point.insertNewLineChar()
 	ctx.point.set(ctx.point.line+1, 0)
-	ctx.point.indentLine()
+	ctx.point.pos += ctx.point.indentLine()
 }
 
 func insertChar(ctx *cmdContext) {
 	ctx.point.insertChar(ctx.char)
 	ctx.point.moveRight(1)
+	if isIndentKey(ctx.char, ctx.point.buf) {
+		ctx.point.pos += ctx.point.indentLine()
+	}
 }
 
 func saveToFile(ctx *cmdContext) {
@@ -257,4 +261,9 @@ func replace(ctx *cmdContext) {
 
 func paste(ctx *cmdContext) {
 	ctx.point.insertText(ctx.text)
+}
+
+func indent(ctx *cmdContext) {
+	ctx.point.pos += ctx.point.indentLine()
+
 }

@@ -1,5 +1,7 @@
 package main
 
+import "unicode/utf8"
+
 func (m mark) initLastInsert() {
 	m.buf.lastInsert = insertText{
 		newText: text{line{}},
@@ -58,4 +60,26 @@ func (t text) lastLine() line {
 		return nil
 	}
 	return t[len(t)-1]
+}
+
+func (l line) toBytes() (b []byte) {
+	temp := make([]byte, utf8.UTFMax)
+	for _, r := range l {
+		i := utf8.EncodeRune(temp, r)
+		b = append(b, temp[:i]...)
+	}
+	return b
+}
+
+func bytestoLine(b []byte) (l line) {
+	for len(b) > 0 {
+		r, size := utf8.DecodeRune(b)
+		l = append(l, r)
+		b = b[size:]
+	}
+	return l
+}
+
+func stringToLine(s string) (l line) {
+	return bytestoLine([]byte(s))
 }
