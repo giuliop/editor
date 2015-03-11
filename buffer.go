@@ -4,16 +4,17 @@ import "time"
 
 // buffer is the representation of an open buffer
 type buffer struct {
-	text       text
-	marks      []mark
-	mod        mode
-	name       string
-	filename   string
-	filetype   filetype
-	fileSync   time.Time
-	modified   bool       // true if not synched with file
-	changeList changeList // for undo / redo (TODO make it file based)
-	lastInsert insertText // text added in last insertMode session
+	text        text
+	marks       []mark
+	savedCursor mark // to save the cursor when the buffer has no view attached
+	mod         mode
+	name        string
+	filename    string
+	filetype    filetype
+	fileSync    time.Time
+	modified    bool       // true if not synched with file
+	changeList  changeList // for undo / redo (TODO make it file based)
+	lastInsert  insertText // text added in last insertMode session
 }
 
 // insertText represents the change to the buffer's text since insertMode was

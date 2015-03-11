@@ -8,6 +8,10 @@ type view struct {
 	startline int
 }
 
+func copyView(v *view) *view {
+	return &view{v.buf, &mark{v.cs.line, v.cs.pos, v.cs.buf}, v.startline}
+}
+
 const cursorLinesToMargin = 5
 
 // cursorline returns the line number of the buffer cursor

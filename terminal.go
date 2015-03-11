@@ -14,8 +14,8 @@ const (
 )
 
 type terminal struct {
-	curView *view
-	panes   pane
+	curPane *pane
+	window  pane
 	message string // to hold messages to display to user
 }
 
@@ -32,11 +32,29 @@ type pane struct {
 	view   *view // if split != nosplit this is nil
 	first  *pane // left or top split, or nil
 	second *pane // right or bottom split, or nil
+	parent *pane // nil for window (main pane)
+}
+
+func (t *terminal) split(s splitType) {
+	t.curPane.split = s
+	t.curPane.first = &pane{nosplit, t.curPane.view, nil, nil, t.curPane}
+	t.curPane.second = &pane{nosplit, copyView(t.curPane.view), nil, nil, t.curPane}
+	t.curPane.view = nil
+	t.curPane = t.curPane.second
+}
+
+func (t *terminal) SplitHorizontal() {
+	t.split(horizontal)
+}
+
+func (t *terminal) SplitVertical() {
+	t.split(vertical)
 }
 
 func (t *terminal) Init(b *buffer) error {
-	t.curView = &view{buf: b, cs: &mark{0, 0, b}, startline: 0}
-	t.panes = pane{nosplit, t.curView, nil, nil}
+	v := &view{buf: b, cs: &mark{0, 0, b}, startline: 0}
+	t.window = pane{nosplit, v, nil, nil, nil}
+	t.curPane = &t.window
 	return termbox.Init()
 }
 
@@ -45,7 +63,7 @@ func (t *terminal) Close() {
 	termbox.SetInputMode(termbox.InputEsc)
 }
 
-func (t *terminal) userMessage(s string) {
+func (t *terminal) UserMessage(s string) {
 	t.message = s
 }
 
@@ -53,65 +71,79 @@ func (t *terminal) Draw() {
 	t.clear()
 
 	w, h := termbox.Size()
-	var textLines int
-	switch h {
-	case 1:
-		textLines = 1
-	case 2:
-		textLines = 1
-		t.statusLine(h-1, w)
-	default:
-		textLines = h - 2
-		t.statusLine(h-2, w)
-		t.messageLine(h - 1)
+
+	// if we have at least two line we display message line
+	if h > 1 {
+		h = h - 1
+		t.messageLine(h)
 	}
 
-	v := t.curView
-	text := t.curView.buf.content()
-	v.fixScroll(textLines)
-	endline := v.startline + textLines - 1
-	if endline > len(text)-1 {
-		endline = len(text) - 1
-	}
-
-	for i, line := range text[v.startline : endline+1] {
-		// viPos tracks the visual position of chars in the line since some chars
-		// might take more than one space on screen
-		lineNum := strconv.Itoa(v.relativeLineNumber(v.startline + i))
-		lineNum = lineNumString[:len(lineNumString)-len(lineNum)-1] + lineNum + " "
-		for j, ch := range lineNum {
-			t.setCellWithColor(j, i, ch, termbox.ColorBlack, termbox.ColorWhite)
-		}
-		viPos := len(lineNumString)
-		for _, ch := range line {
-			t.setCell(viPos, i, ch)
-			viPos += runeWidth(ch)
-		}
-	}
-
-	lineBeforeCs := text[v.cursorLine()][:v.cursorPos()]
-	t.setCursor(lineVisualWidth(lineBeforeCs)+len(lineNumString),
-		v.cursorLine()-v.startline)
-
+	t.window.draw(0, h-1, 0, w-1)
 	t.flush()
 }
 
-func (t *terminal) statusLine(line, width int) {
-	args := t.curView.statusLine()
-	s := fmt.Sprintf("Line %v, char %v, raw line %v, total chars %v, total lines %v",
-		t.curView.cursorLine()+1, args[0], args[1], args[2], args[3])
-	for i, ch := range s {
-		t.setCellWithColor(i, line, ch, termbox.ColorBlack, termbox.ColorWhite)
+func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int) {
+	switch p.split {
+	case vertical:
+		p.first.draw(lineFrom, lineTo, colFrom, (colTo-colFrom)/2-1)
+		p.second.draw(lineFrom, lineTo, (colTo-colFrom)/2+1, colTo)
+	case horizontal:
+		p.first.draw(lineFrom, (lineTo-lineFrom)/2-1, colFrom, colTo)
+		p.second.draw((lineTo-lineFrom)/2+1, lineTo, colFrom, colTo)
+	default:
+		v := p.view
+		text := v.buf.content()
+		h := lineTo - lineFrom + 1
+		//w := colTo - colFrom
+		v.fixScroll(h)
+		endline := v.startline + h - 1
+		if endline > len(text)-1 {
+			endline = len(text) - 1
+		}
+
+		for i, line := range text[v.startline : endline+1] {
+			// draw the (relative) line numbers
+			lineNum := strconv.Itoa(v.relativeLineNumber(v.startline + i))
+			lineNum = lineNumString[:len(lineNumString)-len(lineNum)-1] + lineNum + " "
+			for j, ch := range lineNum {
+				setCellWithColor(j+colFrom, i+lineFrom, ch, termbox.ColorBlack, termbox.ColorWhite)
+			}
+			// viPos tracks the visual position of chars in the line since some chars
+			// might take more than one space on screen
+			viPos := len(lineNumString)
+			for _, ch := range line {
+				setCell(viPos+colFrom, i+lineFrom, ch)
+				viPos += runeWidth(ch)
+			}
+		}
+		// if we have at least two lines we dispaly the status line
+		if h > 1 {
+			p.statusLine(lineTo, colFrom, colTo)
+		}
+
+		lineBeforeCs := v.buf.content()[v.cursorLine()][:v.cursorPos()]
+		setCursor(lineVisualWidth(lineBeforeCs)+len(lineNumString)+colFrom,
+			v.cursorLine()-v.startline+lineFrom)
+
 	}
-	for i := len(s); i < width; i++ {
-		t.setCellWithColor(i, line, ' ', termbox.ColorBlack, termbox.ColorWhite)
+}
+
+func (p *pane) statusLine(line, colFrom, colTo int) {
+	args := p.view.statusLine()
+	s := fmt.Sprintf("Line %v, char %v, raw line %v, total chars %v, total lines %v",
+		p.view.cursorLine()+1, args[0], args[1], args[2], args[3])
+	for i, ch := range s {
+		setCellWithColor(i+colFrom, line, ch, termbox.ColorBlack, termbox.ColorWhite)
+	}
+	for i := len(s) + colFrom; i < (colTo - colFrom + 1); i++ {
+		setCellWithColor(i, line, ' ', termbox.ColorBlack, termbox.ColorWhite)
 	}
 }
 
 func (t *terminal) messageLine(line int) {
-	s := t.curView.buf.name + " - " + t.curView.buf.filename + " - " + t.message
+	s := t.curPane.view.buf.name + " - " + t.curPane.view.buf.filename + " - " + t.message
 	for i, ch := range s {
-		t.setCell(i, line, ch)
+		setCell(i, line, ch)
 	}
 }
 
@@ -123,15 +155,15 @@ func (t *terminal) flush() error {
 	return termbox.Flush()
 }
 
-func (t *terminal) setCursor(x, y int) {
+func setCursor(x, y int) {
 	termbox.SetCursor(x, y)
 }
 
-func (t *terminal) setCell(x, y int, ch rune) {
+func setCell(x, y int, ch rune) {
 	termbox.SetCell(x, y, ch, defCol, defCol)
 }
 
-func (t *terminal) setCellWithColor(x, y int, ch rune, fg, bg termbox.Attribute) {
+func setCellWithColor(x, y int, ch rune, fg, bg termbox.Attribute) {
 	termbox.SetCell(x, y, ch, fg, bg)
 }
 
@@ -142,7 +174,7 @@ func (t *terminal) hideCursor() {
 func (t *terminal) PollEvent() UIEvent {
 	ev := termbox.PollEvent()
 	return UIEvent{
-		t.curView,
+		t.curPane.view,
 		UIEventType(ev.Type),
 		UIModifier(ev.Mod),
 		Keypress{Key(ev.Key), ev.Ch, ev.Ch == 0},
@@ -170,4 +202,26 @@ func lineVisualWidth(ln line) (i int) {
 		i += runeWidth(r)
 	}
 	return i
+}
+
+func (t *terminal) ToPane(dir direction) {
+	if p := t.curPane.nextPane(dir); p != nil {
+		t.curPane = p
+	}
+}
+
+func (p *pane) nextPane(dir direction) *pane {
+	pr := p.parent
+	if pr == nil {
+		return nil
+	}
+	if (dir == right && p.split == horizontal) ||
+		(dir == down && p.split == vertical) {
+		return pr.second
+	}
+	if (dir == left && p.split == horizontal) ||
+		(dir == up && p.split == vertical) {
+		return pr.first
+	}
+	return pr.nextPane(dir)
 }

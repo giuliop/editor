@@ -48,6 +48,10 @@ var cmdKeyNormalMode = map[Key]command{
 	KeyCtrlS: command{saveToFile, nil},
 	KeyCtrlX: command{exitProgram, nil},
 	KeyCtrlR: command{redo, nil},
+	KeyCtrlH: command{toLeftPane, nil},
+	KeyCtrlK: command{toUpPane, nil},
+	KeyCtrlJ: command{toDownPane, nil},
+	KeyCtrlL: command{toRightPane, nil},
 }
 
 // commands should be at most two chars to avoid risk of over-shadowing one char
@@ -78,7 +82,11 @@ var cmdStringNormalMode = map[string]command{
 	"G":  command{moveCursorTo, nil},
 	"m":  command{recordMacro, nil},
 	"u":  command{undo, nil},
-	"=":  command{indent, nil},
+	//TODO make = a command accepting object
+	"==": command{indent, nil},
+	":":  command{enterCommandMode, parseCommandMode},
+	"sv": command{splitVertical, nil},
+	"sh": command{splitHorizontal, nil},
 	//"p":  command{paste, nil},
 }
 
@@ -266,4 +274,34 @@ func paste(ctx *cmdContext) {
 func indent(ctx *cmdContext) {
 	ctx.point.pos += ctx.point.indentLine()
 
+}
+
+func enterCommandMode(ctx *cmdContext) {
+	ctx.point.setMode(commandMode)
+	ctx.msg = enterCommand(ctx.argString)
+	ctx.point.setMode(normalMode)
+}
+
+func splitVertical(ctx *cmdContext) {
+	ui.SplitVertical()
+}
+
+func splitHorizontal(ctx *cmdContext) {
+	ui.SplitHorizontal()
+}
+
+func toLeftPane(ctx *cmdContext) {
+	ui.ToPane(left)
+}
+
+func toRightPane(ctx *cmdContext) {
+	ui.ToPane(right)
+}
+
+func toUpPane(ctx *cmdContext) {
+	ui.ToPane(right)
+}
+
+func toDownPane(ctx *cmdContext) {
+	ui.ToPane(right)
 }

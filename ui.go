@@ -11,7 +11,10 @@ type UI interface {
 	//HideCursor()
 	//SetCell(x, y int, ch rune)
 	PollEvent() UIEvent
-	userMessage(s string)
+	SplitVertical()
+	SplitHorizontal()
+	ToPane(dir direction)
+	UserMessage(s string)
 }
 
 type UIEvent struct {

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const TESTFILENAME = "__testFile__"
+const testFileName = "__testFile__"
 const endOfEmission = KeyCtrlBackslash
 
 func init() {
@@ -33,20 +33,28 @@ func (u *testUI) Close()                 {}
 func (u *testUI) Draw()                  {}
 func (u *testUI) PollEvent() UIEvent     { return UIEvent{} }
 func (u *testUI) CurrentBuffer() *buffer { return nil }
-func (u *testUI) userMessage(s string)   {}
+func (u *testUI) UserMessage(s string)   {}
+func (u *testUI) SplitHorizontal()       {}
+func (u *testUI) SplitVertical()         {}
+func (u *testUI) ToPane(dir direction)   {}
 
 func TestMain(m *testing.M) {
 	debug.Println("\nNew test run\n")
 
-	stringToFile(defaultText, TESTFILENAME)
+	stringToFile(defaultText, testFileName)
 	ui = &testUI{}
-	ui.Init(be.open([]string{TESTFILENAME}))
+	ui.Init(be.open([]string{testFileName}))
 
 	go manageKeypress(keys, commands)
 	go executeCommands(commands)
 
-	defer cleanup()
-	os.Exit(m.Run())
+	code := func() (code int) {
+		defer cleanup()
+		code = m.Run()
+		os.Remove(testFileName)
+		return code
+	}
+	os.Exit(code())
 }
 
 func cleanup() {
@@ -156,8 +164,8 @@ func TestStringToBufferToString(t *testing.T) {
 
 func TestStringToFileToBufferToString(t *testing.T) {
 	s := defaultText
-	stringToFile(s, TESTFILENAME)
-	b, err := be.openFile(TESTFILENAME)
+	stringToFile(s, testFileName)
+	b, err := be.openFile(testFileName)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,13 +17,11 @@ func init() {
 func goindent(m *mark) (indent int) {
 	// indent first line in text with no indentation
 	if m.line == 0 {
-		debug.Println(indent)
 		return 0
 	}
 
 	// previous and current line without final newline char
 	prev := stripCommentsAndNewline(m.buf.text[m.line-1])
-	debug.Printf("%q", prev)
 	curr := stripCommentsAndNewline(m.buf.text[m.line])
 
 	// we start from previous line indent
@@ -31,7 +29,6 @@ func goindent(m *mark) (indent int) {
 
 	// indent line after new block
 	if openBlock.Match(prev.toBytes()) {
-		debug.Printf("openBlock matches")
 		indent += tabStop
 	}
 	// indent closing block line
@@ -45,7 +42,6 @@ func goindent(m *mark) (indent int) {
 	if indent < 0 {
 		indent = 0
 	}
-	debug.Println(indent)
 	return indent
 }
 
