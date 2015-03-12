@@ -71,7 +71,6 @@ func (t *terminal) Draw() {
 	t.clear()
 
 	w, h := termbox.Size()
-
 	// if we have at least two line we display message line
 	if h > 1 {
 		h = h - 1
@@ -82,14 +81,30 @@ func (t *terminal) Draw() {
 	t.flush()
 }
 
+func drawLine(dir splitType, from, to, at int, color termbox.Attribute) {
+	switch dir {
+	case vertical:
+		for i := from; i <= to; i++ {
+			setCellWithColor(at, i, ' ', defCol, color)
+		}
+	case horizontal:
+		for i := from; i <= to; i++ {
+			setCellWithColor(i, at, ' ', defCol, color)
+		}
+	}
+}
+
 func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int) {
 	switch p.split {
 	case vertical:
-		p.first.draw(lineFrom, lineTo, colFrom, (colTo-colFrom)/2-1)
-		p.second.draw(lineFrom, lineTo, (colTo-colFrom)/2+1, colTo)
+		midCol := (colTo-colFrom)/2 + 1 // we'll draw a separation line at midCol
+		p.first.draw(lineFrom, lineTo, colFrom, midCol-1)
+		p.second.draw(lineFrom, lineTo, midCol+1, colTo)
+		drawLine(vertical, lineFrom, lineTo, midCol, termbox.ColorBlack)
 	case horizontal:
-		p.first.draw(lineFrom, (lineTo-lineFrom)/2-1, colFrom, colTo)
-		p.second.draw((lineTo-lineFrom)/2+1, lineTo, colFrom, colTo)
+		midLine := (lineTo-lineFrom)/2 + 1
+		p.first.draw(lineFrom, midLine, colFrom, colTo)
+		p.second.draw(midLine+1, lineTo, colFrom, colTo)
 	default:
 		v := p.view
 		text := v.buf.content()
