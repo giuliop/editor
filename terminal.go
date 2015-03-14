@@ -77,7 +77,7 @@ func (t *terminal) Draw() {
 		t.messageLine(h)
 	}
 
-	t.window.draw(0, h-1, 0, w-1)
+	t.window.draw(0, h-1, 0, w-1, t.curPane)
 	t.flush()
 }
 
@@ -94,17 +94,17 @@ func drawLine(dir splitType, from, to, at int, color termbox.Attribute) {
 	}
 }
 
-func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int) {
+func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int, curPane *pane) {
 	switch p.split {
 	case vertical:
 		midCol := (colTo-colFrom)/2 + 1 // we'll draw a separation line at midCol
-		p.first.draw(lineFrom, lineTo, colFrom, midCol-1)
-		p.second.draw(lineFrom, lineTo, midCol+1, colTo)
+		p.first.draw(lineFrom, lineTo, colFrom, midCol-1, curPane)
+		p.second.draw(lineFrom, lineTo, midCol+1, colTo, curPane)
 		drawLine(vertical, lineFrom, lineTo, midCol, termbox.ColorBlack)
 	case horizontal:
 		midLine := (lineTo-lineFrom)/2 + 1
-		p.first.draw(lineFrom, midLine, colFrom, colTo)
-		p.second.draw(midLine+1, lineTo, colFrom, colTo)
+		p.first.draw(lineFrom, midLine, colFrom, colTo, curPane)
+		p.second.draw(midLine+1, lineTo, colFrom, colTo, curPane)
 	default:
 		v := p.view
 		text := v.buf.content()
@@ -121,7 +121,8 @@ func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int) {
 			lineNum := strconv.Itoa(v.relativeLineNumber(v.startline + i))
 			lineNum = lineNumString[:len(lineNumString)-len(lineNum)-1] + lineNum + " "
 			for j, ch := range lineNum {
-				setCellWithColor(j+colFrom, i+lineFrom, ch, termbox.ColorBlack, termbox.ColorWhite)
+				setCellWithColor(j+colFrom, i+lineFrom, ch, termbox.ColorBlack,
+					termbox.ColorWhite)
 			}
 			// viPos tracks the visual position of chars in the line since some chars
 			// might take more than one space on screen
@@ -136,10 +137,12 @@ func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int) {
 			p.statusLine(lineTo, colFrom, colTo)
 		}
 
-		lineBeforeCs := v.buf.content()[v.cursorLine()][:v.cursorPos()]
-		setCursor(lineVisualWidth(lineBeforeCs)+len(lineNumString)+colFrom,
-			v.cursorLine()-v.startline+lineFrom)
+		if p == curPane {
+			lineBeforeCs := v.buf.content()[v.cursorLine()][:v.cursorPos()]
+			setCursor(lineVisualWidth(lineBeforeCs)+len(lineNumString)+colFrom,
+				v.cursorLine()-v.startline+lineFrom)
 
+		}
 	}
 }
 
@@ -220,8 +223,11 @@ func lineVisualWidth(ln line) (i int) {
 }
 
 func (t *terminal) ToPane(dir direction) {
+	debug.Println(t.curPane)
+	debug.Println(t.curPane.nextPane(dir))
 	if p := t.curPane.nextPane(dir); p != nil {
 		t.curPane = p
+		t.Draw()
 	}
 }
 
@@ -230,13 +236,26 @@ func (p *pane) nextPane(dir direction) *pane {
 	if pr == nil {
 		return nil
 	}
-	if (dir == right && p.split == horizontal) ||
-		(dir == down && p.split == vertical) {
-		return pr.second
+	if (dir == right && pr.split == vertical && p == pr.first) ||
+		(dir == down && pr.split == horizontal && p == pr.first) {
+		if pr.second.split == nosplit {
+			return pr.second
+		}
+		return pr.second.firstView()
 	}
-	if (dir == left && p.split == horizontal) ||
-		(dir == up && p.split == vertical) {
-		return pr.first
+	if (dir == left && pr.split == vertical && p == pr.second) ||
+		(dir == up && pr.split == horizontal && p == pr.second) {
+		if pr.first.split == nosplit {
+			return pr.first
+		}
+		return pr.first.firstView()
 	}
 	return pr.nextPane(dir)
+}
+
+func (p *pane) firstView() *pane {
+	if p.first.split == nosplit {
+		return p.first
+	}
+	return p.first.firstView()
 }

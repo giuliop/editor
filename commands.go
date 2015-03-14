@@ -299,9 +299,9 @@ func toRightPane(ctx *cmdContext) {
 }
 
 func toUpPane(ctx *cmdContext) {
-	ui.ToPane(right)
+	ui.ToPane(up)
 }
 
 func toDownPane(ctx *cmdContext) {
-	ui.ToPane(right)
+	ui.ToPane(down)
 }
