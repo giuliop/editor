@@ -28,28 +28,6 @@ func check(e error) {
 	}
 }
 
-func forceExit() {
-	debug.Print(" * Force Exit * \n\n")
-	debug.printStack()
-	//debug.Printf("%+v", *ctx)
-	exit <- true
-}
-
-func fatalError(e error) {
-	debug.Print(" * Fatal error * \n\n")
-	debug.Println(e)
-	exit <- true
-}
-
-func cleanupOnError() {
-	if r := recover(); r != nil {
-		debug.Print(" * Fatal error * \n\n")
-		debug.Println(r)
-		debug.printStack()
-		exit <- true
-	}
-}
-
 func selectUI(name string) (UI, error) {
 	switch name {
 	case "terminal":

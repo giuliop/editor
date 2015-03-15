@@ -16,7 +16,11 @@ const (
 type terminal struct {
 	curPane *pane
 	window  pane
-	message string // to hold messages to display to user
+	msgLine struct {
+		msg         line  // to hold messages to display to user
+		commandMode bool  // wether we are in command mode
+		lastPane    *pane // last active pane before entering commandMode
+	}
 }
 
 type splitType int
@@ -35,6 +39,38 @@ type pane struct {
 	parent *pane // nil for window (main pane)
 }
 
+func (t *terminal) Init(b *buffer) error {
+	v := &view{buf: b, cs: &mark{0, 0, b}, startline: 0}
+	t.window = pane{nosplit, v, nil, nil, nil}
+	t.curPane = &t.window
+	t.msgLine.msg = line{}
+	return termbox.Init()
+}
+
+func (t *terminal) Close() {
+	termbox.Close()
+	termbox.SetInputMode(termbox.InputEsc)
+}
+
+func (t *terminal) ReadMessageLine() line {
+	return t.msgLine.msg
+}
+
+func (t *terminal) SetMessageLine(l line) {
+	t.msgLine.msg = l
+}
+
+func (t *terminal) Draw() {
+	t.clear()
+
+	w, h := termbox.Size()
+	h = h - 1
+	t.drawMessageLine(h)
+
+	t.window.draw(0, h-1, 0, w-1, t.curPane)
+	t.flush()
+}
+
 func (t *terminal) split(s splitType) {
 	t.curPane.split = s
 	t.curPane.first = &pane{nosplit, t.curPane.view, nil, nil, t.curPane}
@@ -49,36 +85,6 @@ func (t *terminal) SplitHorizontal() {
 
 func (t *terminal) SplitVertical() {
 	t.split(vertical)
-}
-
-func (t *terminal) Init(b *buffer) error {
-	v := &view{buf: b, cs: &mark{0, 0, b}, startline: 0}
-	t.window = pane{nosplit, v, nil, nil, nil}
-	t.curPane = &t.window
-	return termbox.Init()
-}
-
-func (t *terminal) Close() {
-	termbox.Close()
-	termbox.SetInputMode(termbox.InputEsc)
-}
-
-func (t *terminal) UserMessage(s string) {
-	t.message = s
-}
-
-func (t *terminal) Draw() {
-	t.clear()
-
-	w, h := termbox.Size()
-	// if we have at least two line we display message line
-	if h > 1 {
-		h = h - 1
-		t.messageLine(h)
-	}
-
-	t.window.draw(0, h-1, 0, w-1, t.curPane)
-	t.flush()
 }
 
 func drawLine(dir splitType, from, to, at int, color termbox.Attribute) {
@@ -141,7 +147,6 @@ func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int, curPane *pane) {
 			lineBeforeCs := v.buf.content()[v.cursorLine()][:v.cursorPos()]
 			setCursor(lineVisualWidth(lineBeforeCs)+len(lineNumString)+colFrom,
 				v.cursorLine()-v.startline+lineFrom)
-
 		}
 	}
 }
@@ -158,10 +163,16 @@ func (p *pane) statusLine(line, colFrom, colTo int) {
 	}
 }
 
-func (t *terminal) messageLine(line int) {
-	s := t.curPane.view.buf.name + " - " + t.curPane.view.buf.filename + " - " + t.message
-	for i, ch := range s {
-		setCell(i, line, ch)
+func (t *terminal) drawMessageLine(ln int) {
+	msg := t.msgLine.msg
+	if t.msgLine.commandMode == true {
+		setCursor(lineVisualWidth(msg), ln)
+	} else {
+		msg = append(line(t.curPane.view.buf.name+" - "+
+			t.curPane.view.buf.filename+" - "), msg...)
+	}
+	for i, ch := range msg {
+		setCell(i, ln, ch)
 	}
 }
 
@@ -258,4 +269,16 @@ func (p *pane) firstView() *pane {
 		return p.first
 	}
 	return p.first.firstView()
+}
+
+func (t *terminal) enterCommandMode() {
+	t.msgLine.commandMode = true
+	t.msgLine.lastPane = t.curPane
+	t.curPane = nil
+}
+
+func (t *terminal) exitCommandMode() {
+	t.msgLine.commandMode = false
+	t.curPane = t.msgLine.lastPane
+	t.msgLine.lastPane = nil
 }

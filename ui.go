@@ -4,6 +4,8 @@ package main
 type UI interface {
 	Init(b *buffer) error
 	Close()
+	enterCommandMode()
+	exitCommandMode()
 	Draw()
 	//Clear() error
 	//Flush() error
@@ -14,7 +16,8 @@ type UI interface {
 	SplitVertical()
 	SplitHorizontal()
 	ToPane(dir direction)
-	UserMessage(s string)
+	SetMessageLine(l line)
+	ReadMessageLine() line
 }
 
 type UIEvent struct {

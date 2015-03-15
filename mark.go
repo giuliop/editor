@@ -6,8 +6,8 @@ type mark struct {
 	buf  *buffer // the buffer the mark is in
 }
 
-func newMark(b *buffer) mark {
-	return mark{0, 0, b}
+func newMark(b *buffer) *mark {
+	return &mark{0, 0, b}
 }
 
 func (m *mark) atFirstLine() bool {

@@ -11,6 +11,11 @@ var commandModeFuncs = map[string]commandModeF{
 	"echo": echo,
 }
 
+func initCommandView() *view {
+	buf := be.newBuffer("")
+	return &view{buf, newMark(buf), 0}
+}
+
 func enterCommand(s string) (msg string) {
 	tokens := strings.Split(s, " ")
 	cmd, args := tokens[0], tokens[1:]
@@ -44,7 +49,7 @@ func parseCommandMode(ev *UIEvent, ctx *cmdContext) (
 		case KeySpace:
 		}
 	default:
-		ctx.argString += string(ev.Key.Char)
+		ui.SetMessageLine(append(ui.ReadMessageLine(), ev.Key.Char))
 	}
 	ui.Draw()
 	return parseCommandMode, false

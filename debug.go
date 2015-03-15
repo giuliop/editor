@@ -8,6 +8,28 @@ import (
 	"strings"
 )
 
+func forceExit() {
+	debug.Print(" * Force Exit * \n\n")
+	debug.printStack()
+	//debug.Printf("%+v", *ctx)
+	exit <- true
+}
+
+func fatalError(e error) {
+	debug.Print(" * Fatal error * \n\n")
+	debug.Println(e)
+	exit <- true
+}
+
+func cleanupOnError() {
+	if r := recover(); r != nil {
+		debug.Print(" * Fatal error * \n\n")
+		debug.Println(r)
+		debug.printStack()
+		exit <- true
+	}
+}
+
 type debugLogger struct {
 	*log.Logger
 	logfile *os.File
@@ -60,7 +82,7 @@ loop:
 	}
 }
 
-const SPEC_DELIM = "+++"
+const specDelim = "+++"
 
 func keypressesToEmitString(ks []Keypress) string {
 	tokens := []string{}
@@ -68,15 +90,15 @@ func keypressesToEmitString(ks []Keypress) string {
 		tokens = append(tokens, keyToString(k))
 	}
 	s := fmt.Sprintf("(\"%v\")", strings.Join(tokens, "\", \""))
-	s = strings.Replace(s, "\""+SPEC_DELIM, "", -1)
-	return strings.Replace(s, SPEC_DELIM+"\"", "", -1)
+	s = strings.Replace(s, "\""+specDelim, "", -1)
+	return strings.Replace(s, specDelim+"\"", "", -1)
 }
 
 func keyToString(k Keypress) string {
 	if k.isSpecial {
 		switch k.Special {
 		case 0x03:
-			return SPEC_DELIM + "KeyCtrlC" + SPEC_DELIM
+			return specDelim + "KeyCtrlC" + specDelim
 		default:
 			return "???"
 		}

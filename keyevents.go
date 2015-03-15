@@ -37,7 +37,7 @@ func executeCommands(cmds chan cmdContext) {
 			defer cleanupOnError()
 			ctx.cmd(&ctx)
 			if !ctx.silent {
-				ui.UserMessage(ctx.msg)
+				ui.SetMessageLine(line(ctx.msg))
 				ui.Draw()
 			}
 			ctx.cmdChans.done <- cmdDone
