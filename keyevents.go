@@ -37,7 +37,7 @@ func executeCommands(cmds chan cmdContext) {
 			defer cleanupOnError()
 			ctx.cmd(&ctx)
 			if !ctx.silent {
-				ui.SetMessageLine(line(ctx.msg))
+				be.msgLine = line(ctx.msg)
 				ui.Draw()
 			}
 			ctx.cmdChans.done <- cmdDone
@@ -69,6 +69,9 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 			case <-time.After(keypressTimeout):
 				ev.Type = UIEventTimeout
 			}
+		}
+		if be.commandMode == true {
+			nextParser = parseCommandMode
 		}
 		nextParser, reconsumeEvent = nextParser(&ev, ctx)
 		if reconsumeEvent {

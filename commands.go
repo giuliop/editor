@@ -84,7 +84,7 @@ var cmdStringNormalMode = map[string]command{
 	"u":  command{undo, nil},
 	//TODO make = a command accepting object
 	"==": command{indent, nil},
-	":":  command{enterCommandMode, parseCommandMode},
+	";":  command{enterCommandMode, nil},
 	"sv": command{splitVertical, nil},
 	"sh": command{splitHorizontal, nil},
 	//"p":  command{paste, nil},
@@ -274,12 +274,6 @@ func paste(ctx *cmdContext) {
 func indent(ctx *cmdContext) {
 	ctx.point.pos += ctx.point.indentLine()
 
-}
-
-func enterCommandMode(ctx *cmdContext) {
-	ctx.point.setMode(commandMode)
-	ctx.msg = enterCommand(ctx.argString)
-	ctx.point.setMode(normalMode)
 }
 
 func splitVertical(ctx *cmdContext) {

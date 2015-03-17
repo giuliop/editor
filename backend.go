@@ -13,12 +13,15 @@ import (
 
 // backend holds the buffers open in the editor
 type backend struct {
-	bufs []*buffer // the open buffers
+	bufs        []*buffer // the open buffers
+	msgLine     line      // to hold messages to display to user
+	commandMode bool      // wether we are in command mode
 }
 
 // initBackend returns the backend after having initialized it
 func initBackend() backend {
 	be := backend{}
+	be.msgLine = line{}
 	return be
 }
 
@@ -153,4 +156,12 @@ func (be *backend) openFile(filename string) (*buffer, error) {
 	}
 	b.fileSync = time.Now().UTC()
 	return b, nil
+}
+
+func (be *backend) CommandMode() bool {
+	return be.commandMode
+}
+
+func (be *backend) MsgLine() line {
+	return be.msgLine
 }

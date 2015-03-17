@@ -37,10 +37,6 @@ func (u *testUI) UserMessage(s string)   {}
 func (u *testUI) SplitHorizontal()       {}
 func (u *testUI) SplitVertical()         {}
 func (u *testUI) ToPane(dir direction)   {}
-func (u *testUI) SetMessageLine(l line)  {}
-func (u *testUI) ReadMessageLine() line  { return nil }
-func (u *testUI) enterCommandMode()      {}
-func (u *testUI) exitCommandMode()       {}
 
 func TestMain(m *testing.M) {
 	debug.Println("\nNew test run\n")
