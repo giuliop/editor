@@ -30,6 +30,7 @@ type testUI struct {
 
 func (u *testUI) Init(b *buffer) error   { return nil }
 func (u *testUI) Close()                 {}
+func (u *testUI) CurrentView() *view     { return nil }
 func (u *testUI) Draw()                  {}
 func (u *testUI) PollEvent() UIEvent     { return UIEvent{} }
 func (u *testUI) CurrentBuffer() *buffer { return nil }
@@ -165,7 +166,8 @@ func TestStringToBufferToString(t *testing.T) {
 func TestStringToFileToBufferToString(t *testing.T) {
 	s := defaultText
 	stringToFile(s, testFileName)
-	b, err := be.openFile(testFileName)
+	b := be.newBuffer("")
+	err := be.openFile(b, testFileName)
 	if err != nil {
 		t.Fatal(err)
 	}

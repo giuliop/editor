@@ -254,3 +254,7 @@ func (p *pane) firstView() *pane {
 	}
 	return p.first.firstView()
 }
+
+func (t *terminal) CurrentView() *view {
+	return t.curPane.view
+}

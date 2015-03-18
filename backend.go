@@ -11,6 +11,8 @@ import (
 	"unicode/utf8"
 )
 
+const defaultFileName = "newfile"
+
 // backend holds the buffers open in the editor
 type backend struct {
 	bufs        []*buffer // the open buffers
@@ -44,9 +46,9 @@ func (be *backend) open(filenames []string) *buffer {
 	}
 	i, fn := 0, ""
 	for i, fn = range filenames {
-		b, err := be.openFile(fn)
+		b := be.newBuffer("")
+		err := be.openFile(b, fn)
 		if err != nil {
-			b = be.newBuffer("")
 			b.text[0] = line(fmt.Sprint(err))
 		}
 		be.bufs = append(be.bufs, b)
@@ -58,9 +60,13 @@ func (be *backend) open(filenames []string) *buffer {
 // Note that the last line of a buffer ends with a newline which is removed before
 // saving to file
 func (be *backend) newBuffer(name string) *buffer {
+	if name == "" {
+		name = defaultFileName
+	}
 	b := &buffer{
 		text:       make([]line, 1, 20),
 		name:       name,
+		filename:   filename(name),
 		changeList: changeList{ops: make([]bufferChange, 1)},
 	}
 	newMark(b).initLastInsert()
@@ -69,12 +75,17 @@ func (be *backend) newBuffer(name string) *buffer {
 	return b
 }
 
-// save saves the buffer; if it has no filename associated to it, it will be
-// saved as "newfile"
-func (b *buffer) save() error {
-	if b.filename == "" {
-		b.filename = "newfile"
+// reopen refresh the buffer contenct from the file, useful if an external command
+// changed the file
+func (b *buffer) reopen() {
+	err := be.openFile(b, b.filename)
+	if err != nil {
+		debug.Printf("buffer reopen error: %v", err)
 	}
+}
+
+// save saves the buffer
+func (b *buffer) save() error {
 	return b.saveAs(b.filename)
 }
 
@@ -118,14 +129,17 @@ func (br *bufReader) Read(p []byte) (n int, err error) {
 	return n, io.EOF
 }
 
-// openFile open the file named after the passed paramenter and adds it to
-// backend buffer list, returning a pointer to its buffer or an error
-func (be *backend) openFile(filename string) (*buffer, error) {
-	b := be.newBuffer(filename)
-	fp, err := filepath.Abs(filename)
+func filename(name string) string {
+	fp, err := filepath.Abs(name)
 	if err != nil {
 		fatalError(err)
 	}
+	return fp
+}
+
+// openFile opens the file in filename and adds it to passed in buffer b
+func (be *backend) openFile(b *buffer, name string) error {
+	fp := filename(name)
 	b.filename = fp
 	b.name = path.Base(fp)
 	b.filetype = filetypes[path.Ext(fp)]
@@ -133,11 +147,11 @@ func (be *backend) openFile(filename string) (*buffer, error) {
 	f, err := os.Open(fp)
 	switch {
 	case os.IsNotExist(err):
-		return b, nil
+		return nil
 	case os.IsPermission(err):
-		return nil, fmt.Errorf(errPrefix+"we do not have access rights", fp)
+		return fmt.Errorf(errPrefix+"we do not have access rights", fp)
 	case err != nil:
-		return nil, fmt.Errorf(errPrefix+"got this error:\n%v\n", fp, err)
+		return fmt.Errorf(errPrefix+"got this error:\n%v\n", fp, err)
 	}
 	defer f.Close()
 
@@ -148,14 +162,14 @@ func (be *backend) openFile(filename string) (*buffer, error) {
 		b.text = append(b.text, []rune(sc.Text()+"\n"))
 	}
 	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf(errPrefix+"got this error:\n%v\n", fp, err)
+		return fmt.Errorf(errPrefix+"got this error:\n%v\n", fp, err)
 	}
 	if len(b.text) == 0 {
 		b.text[0] = newLine()
 		b.mod = insertMode
 	}
 	b.fileSync = time.Now().UTC()
-	return b, nil
+	return nil
 }
 
 func (be *backend) CommandMode() bool {

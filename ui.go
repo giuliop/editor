@@ -4,6 +4,7 @@ package main
 type UI interface {
 	Init(b *buffer) error
 	Close()
+	CurrentView() *view
 	Draw()
 	//Clear() error
 	//Flush() error
