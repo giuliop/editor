@@ -61,7 +61,17 @@ func (c *commandRegister) next() {
 }
 
 var commandModeFuncs = map[string]commandModeF{
+	"q":    quit,
 	"echo": echo,
+}
+
+func echo(args []string) (msg string) {
+	return strings.Join(args, " ")
+}
+
+func quit(args []string) (msg string) {
+	exitProgram(nil)
+	return "Bye-bye"
 }
 
 func initCommandView() *view {
@@ -102,10 +112,6 @@ func enterCommand(cmd line) (msg string) {
 	cs.fixPos()
 
 	return msg
-}
-
-func echo(args []string) (msg string) {
-	return strings.Join(args, " ")
 }
 
 func parseCommandMode(ev *UIEvent, ctx *cmdContext) (

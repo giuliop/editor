@@ -70,9 +70,6 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 				ev.Type = UIEventTimeout
 			}
 		}
-		if be.commandMode == true {
-			nextParser = parseCommandMode
-		}
 		nextParser, reconsumeEvent = nextParser(&ev, ctx)
 		if reconsumeEvent {
 			reprocess <- ev
@@ -87,6 +84,9 @@ func manageKeypress(keys chan UIEvent, cmds chan cmdContext) {
 
 func parseAction(ev *UIEvent, ctx *cmdContext) (
 	nextParser parseFunc, reprocessEvent bool) {
+	if be.commandMode == true {
+		return parseCommandMode(ev, ctx)
+	}
 	switch {
 	// if called by a timeout execute a matched string command if we have one
 	case ev.Type == UIEventTimeout:
