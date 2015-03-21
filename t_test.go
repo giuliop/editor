@@ -72,6 +72,17 @@ func newKeyPressEmitter(v *view) *keypressEmitter {
 }
 
 func (e keypressEmitter) emit(a ...interface{}) {
+	e._emit(a)
+	keyToEvents(e.v, endOfEmission)
+	<-allDone
+}
+
+func (e keypressEmitter) emitAsynch(waitF func(), a ...interface{}) {
+	e._emit(a)
+	waitF()
+}
+
+func (e keypressEmitter) _emit(a []interface{}) {
 	for _, x := range a {
 		switch x.(type) {
 		case string:
@@ -83,8 +94,6 @@ func (e keypressEmitter) emit(a ...interface{}) {
 			panic("Unrecognized keypress type")
 		}
 	}
-	keyToEvents(e.v, endOfEmission)
-	<-allDone
 }
 
 func stringToEvents(v *view, s string) {

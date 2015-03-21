@@ -57,7 +57,7 @@ func init() {
 func initRegisters() register {
 	r := register{}
 	r.macros = &macroRegister{&keyLogger{}, [10][]Keypress{}}
-	r.commands = &commandRegister{make([]string, 0, 10), -1}
+	r.commands = &commandRegister{make([]line, 0, 10), -1}
 	return r
 }
 

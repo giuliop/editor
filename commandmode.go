@@ -13,14 +13,13 @@ const (
 type commandModeF func(args []string) (msg string)
 
 type commandRegister struct {
-	list []string // the list of commands
-	last int      // to retrieve past commands
+	list []line // the list of commands
+	last int    // to retrieve past commands
 }
 
-func (c *commandRegister) add(cmd string) {
+func (c *commandRegister) add(cmd line) {
 	c.list = append(c.list, cmd)
 	c.last++
-	debug.Println(c.last)
 	if len(c.list) > commandModeMaxCmds {
 		c.list = c.list[1:]
 		c.last--
@@ -28,10 +27,11 @@ func (c *commandRegister) add(cmd string) {
 }
 
 func (c *commandRegister) previous() {
-	be.msgLine = append(be.msgLine[:len(commandModePrompt)],
-		stringToLine(c.list[c.last])...)
-	if c.last > 0 {
-		c.last--
+	for ; c.last > 0; c.last-- {
+		if c.list[c.last].hasPrefix(be.msgLine[len(commandModePrompt):]) {
+			be.msgLine = append(be.msgLine[:len(commandModePrompt)],
+				c.list[c.last]...)
+		}
 	}
 }
 
@@ -41,7 +41,7 @@ func (c *commandRegister) next() {
 		return
 	}
 	c.last++
-	be.msgLine = append(be.msgLine, stringToLine(c.list[c.last])...)
+	be.msgLine = append(be.msgLine, c.list[c.last]...)
 }
 
 var commandModeFuncs = map[string]commandModeF{
@@ -64,15 +64,15 @@ func exitCommandMode() {
 	ui.Draw()
 }
 
-func enterCommand(s string) (msg string) {
-	if s == "" {
+func enterCommand(cmd line) (msg string) {
+	if len(cmd) == 0 {
 		return ""
 	}
 	r.commands.last = len(r.commands.list) - 1
-	r.commands.add(s)
-	tokens := strings.Split(s, " ")
-	cmd, args := tokens[0], tokens[1:]
-	f := commandModeFuncs[cmd]
+	r.commands.add(cmd)
+	tokens := strings.Split(string(cmd), " ")
+	c, args := tokens[0], tokens[1:]
+	f := commandModeFuncs[c]
 	if f == nil {
 		return fmt.Sprintf("Unknown command: %v", cmd)
 	}
@@ -100,8 +100,8 @@ func parseCommandMode(ev *UIEvent, ctx *cmdContext) (
 	case ev.Key.isSpecial:
 		switch ev.Key.Special {
 		case KeyCtrlJ, KeyEnter:
-			be.msgLine = stringToLine(enterCommand(string(
-				be.msgLine[len(commandModePrompt):])))
+			be.msgLine = stringToLine(
+				enterCommand(be.msgLine[len(commandModePrompt):]))
 			exitCommandMode()
 			return nil, false
 		case KeyArrowRight:

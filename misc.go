@@ -83,3 +83,15 @@ func bytestoLine(b []byte) (l line) {
 func stringToLine(s string) (l line) {
 	return bytestoLine([]byte(s))
 }
+
+func (l line) hasPrefix(pref line) bool {
+	if len(pref) > len(l) {
+		return false
+	}
+	for i, c := range pref {
+		if c != l[i] {
+			return false
+		}
+	}
+	return true
+}
