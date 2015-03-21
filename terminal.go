@@ -151,7 +151,6 @@ func (p *pane) statusLine(line, colFrom, colTo int) {
 
 func (t *terminal) drawMessageLine(ln int) {
 	msg := be.MsgLine()
-	debug.Printf("%q\n", msg)
 	if be.CommandMode() == true {
 		setCursor(lineVisualWidth(msg), ln)
 	}

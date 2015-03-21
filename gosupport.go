@@ -81,5 +81,6 @@ func gofmt(args []string) string {
 		debug.Printf("gofmt error: %v\n", err)
 		return "gofmt error, sorry!"
 	}
+	b.reopen()
 	return "gofmt run"
 }
