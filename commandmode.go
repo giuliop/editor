@@ -1,9 +1,6 @@
 package main
 
-import (
-	"fmt"
-	"strings"
-)
+import "strings"
 
 const (
 	commandModePrompt  = "-> "
@@ -13,8 +10,15 @@ const (
 type commandModeF func(args []string) (msg string)
 
 type commandRegister struct {
-	list []line // the list of commands
-	last int    // to retrieve past commands
+	list    []line // the list of commands
+	last    int    // to retrieve past commands
+	current line   // the current command being typed
+}
+
+func (c *commandRegister) reset() {
+	c.list = c.list[:0]
+	c.last = -1
+	c.current = c.current[:0]
 }
 
 func (c *commandRegister) add(cmd line) {
@@ -27,21 +31,33 @@ func (c *commandRegister) add(cmd line) {
 }
 
 func (c *commandRegister) previous() {
-	for ; c.last > 0; c.last-- {
-		if c.list[c.last].hasPrefix(be.msgLine[len(commandModePrompt):]) {
+	for found := false; found == false; {
+		if c.list[c.last].hasPrefix(c.current) {
 			be.msgLine = append(be.msgLine[:len(commandModePrompt)],
 				c.list[c.last]...)
+			found = true
+		}
+		if c.last > 0 {
+			c.last--
+		} else {
+			return
 		}
 	}
 }
 
 func (c *commandRegister) next() {
-	be.msgLine = be.msgLine[:len(commandModePrompt)]
-	if c.last == len(c.list)-1 {
-		return
+	for {
+		if c.last == len(c.list)-1 {
+			be.msgLine = append(be.msgLine[:len(commandModePrompt)], c.current...)
+			return
+		}
+		c.last++
+		if c.list[c.last].hasPrefix(c.current) {
+			be.msgLine = append(be.msgLine[:len(commandModePrompt)],
+				c.list[c.last]...)
+			return
+		}
 	}
-	c.last++
-	be.msgLine = append(be.msgLine, c.list[c.last]...)
 }
 
 var commandModeFuncs = map[string]commandModeF{
@@ -60,6 +76,7 @@ func enterCommandMode(ctx *cmdContext) {
 
 func exitCommandMode() {
 	r.commands.last = len(r.commands.list) - 1
+	r.commands.current = r.commands.current[:0]
 	be.commandMode = false
 	ui.Draw()
 }
@@ -68,13 +85,12 @@ func enterCommand(cmd line) (msg string) {
 	if len(cmd) == 0 {
 		return ""
 	}
-	r.commands.last = len(r.commands.list) - 1
 	r.commands.add(cmd)
 	tokens := strings.Split(string(cmd), " ")
 	c, args := tokens[0], tokens[1:]
 	f := commandModeFuncs[c]
 	if f == nil {
-		return fmt.Sprintf("Unknown command: %v", cmd)
+		return "Unknown command: " + string(cmd)
 	}
 	msg = f(args)
 
@@ -114,17 +130,23 @@ func parseCommandMode(ev *UIEvent, ctx *cmdContext) (
 		case KeyBackspace, KeyBackspace2:
 			if len(be.msgLine) > len(commandModePrompt) {
 				be.msgLine = be.msgLine[:len(be.msgLine)-1]
+				r.commands.current = append(line{},
+					be.msgLine[len(commandModePrompt):]...)
 			}
 		case KeyDelete:
 		case KeyEsc, KeyCtrlC:
-			be.msgLine = line{}
+			be.msgLine = be.msgLine[:0]
 			exitCommandMode()
 			return nil, false
 		case KeySpace:
 			be.msgLine = append(be.msgLine, ' ')
+		case testEndOfEmission: // to support automated testing
+			testChan <- struct{}{}
 		}
+
 	default:
 		be.msgLine = append(be.msgLine, ev.Key.Char)
+		r.commands.current = append(line{}, be.msgLine[len(commandModePrompt):]...)
 	}
 	ui.Draw()
 	return parseCommandMode, false

@@ -8,20 +8,18 @@ import (
 )
 
 const testFileName = "__testFile__"
-const endOfEmission = KeyCtrlBackslash
 
 func init() {
-	cmdKeyInsertMode[endOfEmission] = command{allDoneCmd, nil}
-	cmdKeyNormalMode[endOfEmission] = command{allDoneCmd, nil}
+	cmdKeyInsertMode[testEndOfEmission] = command{allDoneCmd, nil}
+	cmdKeyNormalMode[testEndOfEmission] = command{allDoneCmd, nil}
 }
 
 func allDoneCmd(ctx *cmdContext) {
-	allDone <- struct{}{}
+	testChan <- struct{}{}
 }
 
 var (
-	keys    = make(chan UIEvent, 100)
-	allDone = make(chan struct{}) // used this to signal all commands done
+	keys = make(chan UIEvent, 100)
 )
 
 type testUI struct {
@@ -72,17 +70,6 @@ func newKeyPressEmitter(v *view) *keypressEmitter {
 }
 
 func (e keypressEmitter) emit(a ...interface{}) {
-	e._emit(a)
-	keyToEvents(e.v, endOfEmission)
-	<-allDone
-}
-
-func (e keypressEmitter) emitAsynch(waitF func(), a ...interface{}) {
-	e._emit(a)
-	waitF()
-}
-
-func (e keypressEmitter) _emit(a []interface{}) {
 	for _, x := range a {
 		switch x.(type) {
 		case string:
@@ -94,6 +81,8 @@ func (e keypressEmitter) _emit(a []interface{}) {
 			panic("Unrecognized keypress type")
 		}
 	}
+	keyToEvents(e.v, testEndOfEmission)
+	<-testChan
 }
 
 func stringToEvents(v *view, s string) {
