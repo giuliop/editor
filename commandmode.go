@@ -7,6 +7,18 @@ const (
 	commandModeMaxCmds = 100
 )
 
+var commandModeKeyTable = map[Key]func(){
+	KeyArrowRight: nil,
+	KeyArrowLeft:  nil,
+	KeyArrowDown:  func() { r.commands.next() },
+	KeyArrowUp:    func() { r.commands.previous() },
+	KeyTab:        nil,
+	KeyDelete:     nil,
+	KeySpace:      func() { be.msgLine = append(be.msgLine, ' ') },
+	KeyBackspace:  cmdModeBackSpace,
+	KeyBackspace2: cmdModeBackSpace,
+}
+
 type commandModeF func(args []string) (msg string)
 
 type commandRegister struct {
@@ -32,6 +44,7 @@ func (c *commandRegister) add(cmd line) {
 
 func (c *commandRegister) previous() {
 	for found := false; found == false; {
+		debug.Println(c)
 		if c.list[c.last].hasPrefix(c.current) {
 			be.msgLine = append(be.msgLine[:len(commandModePrompt)],
 				c.list[c.last]...)
@@ -126,34 +139,24 @@ func parseCommandMode(ev *UIEvent, ctx *cmdContext) (
 				enterCommand(be.msgLine[len(commandModePrompt):]))
 			exitCommandMode()
 			return nil, false
-		case KeyArrowRight:
-		case KeyArrowLeft:
-		case KeyArrowDown:
-			r.commands.next()
-		case KeyArrowUp:
-			r.commands.previous()
-		case KeyTab:
-		case KeyBackspace, KeyBackspace2:
-			if len(be.msgLine) > len(commandModePrompt) {
-				be.msgLine = be.msgLine[:len(be.msgLine)-1]
-				r.commands.current = append(line{},
-					be.msgLine[len(commandModePrompt):]...)
-			}
-		case KeyDelete:
 		case KeyEsc, KeyCtrlC:
 			be.msgLine = be.msgLine[:0]
 			exitCommandMode()
 			return nil, false
-		case KeySpace:
-			be.msgLine = append(be.msgLine, ' ')
-		case testEndOfEmission: // to support automated testing
-			testChan <- struct{}{}
+		default:
+			commandModeKeyTable[ev.Key.Special]()
 		}
-
 	default:
 		be.msgLine = append(be.msgLine, ev.Key.Char)
 		r.commands.current = append(line{}, be.msgLine[len(commandModePrompt):]...)
 	}
 	ui.Draw()
 	return parseCommandMode, false
+}
+
+func cmdModeBackSpace() {
+	if len(be.msgLine) > len(commandModePrompt) {
+		be.msgLine = be.msgLine[:len(be.msgLine)-1]
+		r.commands.current = append(line{}, be.msgLine[len(commandModePrompt):]...)
+	}
 }

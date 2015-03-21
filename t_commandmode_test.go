@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-func TestPrevNextCmd(t *testing.T) {
+func _TestPrevNextCmd(t *testing.T) {
 	a := &asserter{}
 	v := stringToView("\n")
 	e := newKeyPressEmitter(v)
@@ -33,7 +33,7 @@ func TestPrevNextCmd(t *testing.T) {
 	}
 }
 
-func TestPrevNextCmdSubMatches(t *testing.T) {
+func _TestPrevNextCmdSubMatches(t *testing.T) {
 	r.commands.reset()
 	a := &asserter{}
 	v := stringToView("\n")

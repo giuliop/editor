@@ -13,12 +13,9 @@ var (
 	commands = make(chan cmdContext, 100) // to push commands (sync)
 	exit     = make(chan bool)            // to command exiting the program
 	wait     = make(chan struct{}, 100)   // for async operations that must end before exit
-	testChan = make(chan struct{})        // to support automated testing
 )
 
 var debug *debugLogger
-
-const testEndOfEmission = KeyCtrlBackslash // to support automated testing
 
 type register struct {
 	macros   *macroRegister   // recorded macros
