@@ -19,7 +19,7 @@ var commandModeKeyTable = map[Key]func(){
 	KeyBackspace2: cmdModeBackSpace,
 }
 
-type commandModeF func(args []string) (msg string)
+type commandModeF func(b *buffer, args []string) (msg string)
 
 type commandRegister struct {
 	list    []line // the list of commands
@@ -78,11 +78,11 @@ var commandModeFuncs = map[string]commandModeF{
 	"echo": echo,
 }
 
-func echo(args []string) (msg string) {
+func echo(b *buffer, args []string) (msg string) {
 	return strings.Join(args, " ")
 }
 
-func quit(args []string) (msg string) {
+func quit(b *buffer, args []string) (msg string) {
 	exitProgram(nil)
 	return "Bye-bye"
 }
@@ -104,7 +104,7 @@ func exitCommandMode() {
 	ui.Draw()
 }
 
-func enterCommand(cmd line) (msg string) {
+func enterCommand(v *view, cmd line) (msg string) {
 	if len(cmd) == 0 {
 		return ""
 	}
@@ -115,7 +115,7 @@ func enterCommand(cmd line) (msg string) {
 	if f == nil {
 		return "Unknown command: " + string(cmd)
 	}
-	msg = f(args)
+	msg = f(v.buf, args)
 
 	// make sure the cursor is valid in case the command changed the buffer
 	cs := ui.CurrentView().cs
@@ -136,7 +136,7 @@ func parseCommandMode(ev *UIEvent, ctx *cmdContext) (
 		switch ev.Key.Special {
 		case KeyCtrlJ, KeyEnter:
 			be.msgLine = stringToLine(
-				enterCommand(be.msgLine[len(commandModePrompt):]))
+				enterCommand(ctx.view, be.msgLine[len(commandModePrompt):]))
 			exitCommandMode()
 			return nil, false
 		case KeyEsc, KeyCtrlC:

@@ -30,11 +30,12 @@ func initBackend() backend {
 type filetype int
 
 const (
-	_go filetype = iota
+	any filetype = iota
+	_go
 )
 
 var filetypes = map[string]filetype{
-	"go": _go,
+	".go": _go,
 }
 
 // open takes a list of filenames and open a buffer for each returning the
@@ -91,11 +92,19 @@ func (b *buffer) save() error {
 
 // saveAs saves the buffer in a file named after the passed parameter
 func (b *buffer) saveAs(filename string) error {
+	for _, h := range beforeSaveHooks[any] {
+		h(b)
+	}
+	for _, h := range beforeSaveHooks[b.filetype] {
+		h(b)
+	}
+
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
 	br := &bufReader{b, 0, 0}
 	_, err = io.Copy(f, br)
 	if err == nil {

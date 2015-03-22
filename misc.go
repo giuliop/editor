@@ -71,7 +71,7 @@ func (l line) toBytes() (b []byte) {
 	return b
 }
 
-func bytestoLine(b []byte) (l line) {
+func bytesToLine(b []byte) (l line) {
 	for len(b) > 0 {
 		r, size := utf8.DecodeRune(b)
 		l = append(l, r)
@@ -80,8 +80,18 @@ func bytestoLine(b []byte) (l line) {
 	return l
 }
 
+func bytesToText(b []byte) text {
+	t := text{line{}}
+	for len(b) > 0 {
+		r, size := utf8.DecodeRune(b)
+		t.appendChar(r)
+		b = b[size:]
+	}
+	return t
+}
+
 func stringToLine(s string) (l line) {
-	return bytestoLine([]byte(s))
+	return bytesToLine([]byte(s))
 }
 
 func (l line) hasPrefix(pref line) bool {

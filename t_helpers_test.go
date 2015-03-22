@@ -40,7 +40,7 @@ func TestLineIndent(t *testing.T) {
 func TestLineToBytes(t *testing.T) {
 	s := "func a() {"
 	b := []byte(s)
-	l := bytestoLine(b)
+	l := bytesToLine(b)
 	a := &asserter{}
 	a.assert(s, string(l.toBytes()), string(l.toBytes()) == s, true)
 	if a.failed {

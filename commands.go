@@ -85,6 +85,7 @@ var cmdStringNormalMode = map[string]command{
 	//TODO make = a command accepting object
 	"==": command{indent, nil},
 	";":  command{enterCommandMode, nil},
+	":":  command{enterCommandMode, nil},
 	"sv": command{splitVertical, nil},
 	"sh": command{splitHorizontal, nil},
 	//"p":  command{paste, nil},
