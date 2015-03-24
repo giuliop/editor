@@ -65,17 +65,23 @@ func stripCommentsAndNewline(ln line) line {
 	return ln
 }
 
+// gofmt runs goimports (or gofmt if goimports is not installed) on buffer b
 func gofmt(b *buffer, args []string) string {
-	path, err := exec.LookPath("gofmt")
+	path, err := exec.LookPath("goimports")
+	program := "goimports"
 	if err != nil {
-		return "gofmt is not installed, sorry!"
+		path, err = exec.LookPath("gofmt")
+		program = "gofmt"
+		if err != nil {
+			return "gofmt is not installed, sorry!"
+		}
 	}
 	cmd := exec.Command(path, b.filename)
 	out, err := cmd.Output()
 	if err != nil {
-		debug.Printf("gofmt error: %v\n", err)
+		debug.Printf("%v error: %v\n", program, err)
 		return "gofmt error, sorry!"
 	}
 	b.text = bytesToText(out)
-	return "gofmt run"
+	return program + " run"
 }
