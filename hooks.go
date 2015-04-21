@@ -1,9 +1,9 @@
 package main
 
-type bufferActionHooks map[filetype][]func(b *buffer)
+type actionHooks map[filetype][]func(v *view)
 
-var beforeSaveHooks = bufferActionHooks{}
+var beforeSaveHooks = actionHooks{}
 
-func (bh bufferActionHooks) add(ft filetype, fn func(b *buffer)) {
+func (bh actionHooks) add(ft filetype, fn func(v *view)) {
 	bh[ft] = append(bh[ft], fn)
 }

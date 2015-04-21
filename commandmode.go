@@ -19,7 +19,7 @@ var commandModeKeyTable = map[Key]func(){
 	KeyBackspace2: cmdModeBackSpace,
 }
 
-type commandModeF func(b *buffer, args []string) (msg string)
+type commandModeF func(v *view, args []string) (msg string)
 
 type commandRegister struct {
 	list    []line // the list of commands
@@ -78,11 +78,11 @@ var commandModeFuncs = map[string]commandModeF{
 	"echo": echo,
 }
 
-func echo(b *buffer, args []string) (msg string) {
+func echo(v *view, args []string) (msg string) {
 	return strings.Join(args, " ")
 }
 
-func quit(b *buffer, args []string) (msg string) {
+func quit(v *view, args []string) (msg string) {
 	exitProgram(nil)
 	return "Bye-bye"
 }
@@ -115,7 +115,7 @@ func enterCommand(v *view, cmd line) (msg string) {
 	if f == nil {
 		return "Unknown command: " + string(cmd)
 	}
-	msg = f(v.buf, args)
+	msg = f(v, args)
 
 	// make sure the cursor is valid in case the command changed the buffer
 	cs := ui.CurrentView().cs

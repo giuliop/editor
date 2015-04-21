@@ -130,6 +130,17 @@ func (p *pane) draw(lineFrom, lineTo, colFrom, colTo int, t *terminal) {
 		}
 
 		if p == t.curPane && be.CommandMode() == false {
+
+			//DEBUG code
+			err := fmt.Errorf("len text: %v, cursorLine: %v, len line: "+
+				"%v, cursorPos: %v", len(v.buf.content()), v.cursorLine(),
+				len(v.buf.content()[v.cursorLine()]), v.cursorPos())
+			if (v.cursorLine() < 0 || v.cursorLine() > len(v.buf.content())) ||
+				(v.cursorPos() < 0 || v.cursorPos() > len(v.buf.content()[v.cursorLine()])) {
+				fatalError(err)
+				return
+			}
+
 			lineBeforeCs := v.buf.content()[v.cursorLine()][:v.cursorPos()]
 			setCursor(lineVisualWidth(lineBeforeCs)+len(lineNumString)+colFrom,
 				v.cursorLine()-v.startline+lineFrom)

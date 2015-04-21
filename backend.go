@@ -30,7 +30,7 @@ func initBackend() backend {
 type filetype int
 
 const (
-	any filetype = iota
+	anyFiletype filetype = iota
 	_go
 )
 
@@ -92,13 +92,6 @@ func (b *buffer) save() error {
 
 // saveAs saves the buffer in a file named after the passed parameter
 func (b *buffer) saveAs(filename string) error {
-	for _, h := range beforeSaveHooks[any] {
-		h(b)
-	}
-	for _, h := range beforeSaveHooks[b.filetype] {
-		h(b)
-	}
-
 	f, err := os.Create(filename)
 	if err != nil {
 		return err

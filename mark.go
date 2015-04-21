@@ -77,10 +77,29 @@ func (m *mark) fixPos() {
 	max := m.maxCursPos()
 	if m.pos > max {
 		m.pos = max
+		return
 	}
 	if m.pos < 0 {
 		m.pos = 0
 	}
+}
+
+//fixLine checks that the cursor is on a valid line and puts the cursor
+// on either the first or last line otherwise
+func (m *mark) fixLine() {
+	max := len(m.buf.text) - 1
+	if m.line > max {
+		m.line = max
+		return
+	}
+	if m.line < 0 {
+		m.line = 0
+	}
+}
+
+func (m *mark) fixLineAndPos() {
+	m.fixLine()
+	m.fixPos()
 }
 
 func (m *mark) moveUp(steps int) {

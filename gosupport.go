@@ -15,7 +15,7 @@ func init() {
 	indentFuncs[_go] = goindent
 	indentKeys[_go] = []rune{')', '}', ':'}
 	commandModeFuncs["gofmt"] = gofmt
-	beforeSaveHooks.add(_go, func(b *buffer) { gofmt(b, nil) })
+	beforeSaveHooks.add(_go, func(v *view) { gofmt(v, nil) })
 }
 
 // goIndent returns the indentation needed for the line under the mark
@@ -65,8 +65,8 @@ func stripCommentsAndNewline(ln line) line {
 	return ln
 }
 
-// gofmt runs goimports (or gofmt if goimports is not installed) on buffer b
-func gofmt(b *buffer, args []string) string {
+// gofmt runs goimports (or gofmt if goimports is not installed) on view v
+func gofmt(v *view, args []string) string {
 	path, err := exec.LookPath("goimports")
 	program := "goimports"
 	if err != nil {
@@ -76,12 +76,14 @@ func gofmt(b *buffer, args []string) string {
 			return "gofmt is not installed, sorry!"
 		}
 	}
-	cmd := exec.Command(path, b.filename)
+	cmd := exec.Command(path, v.buf.filename)
 	out, err := cmd.Output()
 	if err != nil {
 		debug.Printf("%v error: %v\n", program, err)
 		return "gofmt error, sorry!"
 	}
-	b.text = bytesToText(out)
+	v.buf.text = bytesToText(out)
+	// make sure cursor is OK
+	v.cs.fixLineAndPos()
 	return program + " run"
 }

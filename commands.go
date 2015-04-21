@@ -255,6 +255,13 @@ func insertChar(ctx *cmdContext) {
 }
 
 func saveToFile(ctx *cmdContext) {
+	for _, h := range beforeSaveHooks[anyFiletype] {
+		h(ctx.view)
+	}
+	for _, h := range beforeSaveHooks[ctx.view.buf.filetype] {
+		h(ctx.view)
+	}
+
 	err := ctx.point.buf.save()
 	if err != nil {
 		ctx.msg = err.Error()
